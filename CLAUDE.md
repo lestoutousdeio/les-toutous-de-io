@@ -4,9 +4,11 @@ Site pour une pension canine à Saint-Pée-sur-Nivelle (Pays Basque), tenue par 
 
 ## Architecture
 
-- `index.html` — site public standalone (formulaire de demande) → https://lestoutousdeio.netlify.app
-- `admin.html` — interface admin standalone → https://lestoutousdeioadmin.netlify.app
+- `public/index.html` — site public standalone (formulaire de demande) → https://lestoutousdeio.netlify.app
+- `admin/index.html` — interface admin standalone → https://lestoutousdeioadmin.netlify.app
 - HTML/CSS/JS vanilla, aucun framework, aucun build. Chaque fichier est autonome.
+- Déploiement : GitHub → Netlify automatique. Chaque site Netlify pointe sur son dossier
+  (base directory `public` ou `admin`, pas de commande de build). Un push sur `main` déploie les deux.
 - Base de données : Supabase (PostgreSQL), accès via clé publishable côté client.
 - Hébergement : Netlify (deux sites distincts, un par fichier).
 - Emails : EmailJS (service `service_r8y448c`, templates `confirmation_demande`, `garde_acceptee`) — **pas encore fonctionnel**.
@@ -42,5 +44,8 @@ Tables : `clients` (statuts nouveau/rencontre/test/valide/refuse), `chiens` (plu
 
 ## Précautions
 
-- L'admin en ligne est parfois en retard sur le fichier local : après toute modif, redéployer sur Netlify.
+- Supabase plan gratuit : le projet se met en pause après ~1 semaine sans activité →
+  le site ne fonctionne plus tant qu'il n'est pas restauré depuis le dashboard.
+- Dépôt GitHub privé : le mot de passe admin est en clair dans `admin/index.html`.
 - `captures-bugs/` contient des captures d'écran de bugs signalés (non versionnées).
+- `migrations/` : SQL à exécuter manuellement dans Supabase Dashboard → SQL Editor.
