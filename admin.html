@@ -992,8 +992,8 @@ async function confirmerAcceptation() {
         // Sauvegardés en base : survivent au rechargement de la page
         montant_total: montantTotal,
         montant_acompte: montantAcompte,
-        horaire_arrivee: arrivee,
-        horaire_depart: depart,
+        arrivee_tardive: arrivee === 'tard',
+        depart_tot: depart === 'tot',
         jours_fidelite: joursFidelite
       }
     });
@@ -1002,6 +1002,8 @@ async function confirmerAcceptation() {
       allDemandes[idx].statut = 'acceptee';
       allDemandes[idx].montant_total = montantTotal;
       allDemandes[idx].montant_acompte = montantAcompte;
+      allDemandes[idx].arrivee_tardive = arrivee === 'tard';
+      allDemandes[idx].depart_tot = depart === 'tot';
       allDemandes[idx].jours_fidelite = joursFidelite;
     }
     closeModal('modal-acceptation');
@@ -1021,11 +1023,41 @@ async function confirmerVirement(id) {
   const montantTotal = d.montant_total || 0;
   const montantAcompte = d.montant_acompte || 0;
   try {
+    // ── Le compte client est créé à la confirmation (processus : test validé → compte) ──
+    let clientId = d.client_id;
+    if (!clientId) {
+      if (!d.email_contact) {
+        showToast('Impossible de confirmer : la demande n\'a pas d\'email pour créer le compte client', 'error');
+        return;
+      }
+      // Client déjà existant avec cet email ?
+      const existants = await sb(`clients?email=eq.${encodeURIComponent(d.email_contact)}&select=id`);
+      if (existants && existants.length > 0) {
+        clientId = existants[0].id;
+      } else {
+        const crees = await sb('clients', {
+          method: 'POST',
+          body: {
+            prenom: d.prenom_contact || '',
+            nom: d.nom_contact || '',
+            email: d.email_contact,
+            telephone: d.telephone_contact || '',
+            statut: 'valide'
+          }
+        });
+        clientId = crees[0].id;
+      }
+      // Lier la demande au client
+      await sb(`demandes?id=eq.${id}`, { method: 'PATCH', body: { client_id: clientId } });
+      d.client_id = clientId;
+    }
+
     await sb(`demandes?id=eq.${id}`, { method: 'PATCH', body: { statut: 'virement_ok', traitee_le: new Date().toISOString() } });
 
-    // Créer la réservation (sans client_id si null)
+    // Créer la réservation
     const resaBody = {
       demande_id: id,
+      client_id: clientId,
       service: d.service,
       date_debut: d.date_debut,
       date_fin: d.date_fin,
@@ -1036,25 +1068,28 @@ async function confirmerVirement(id) {
       montant_acompte: montantAcompte,
       acompte_recu: true,
       acompte_recu_le: new Date().toISOString().split('T')[0],
+      arrivee_tardive: d.arrivee_tardive || false,
+      depart_tot: d.depart_tot || false,
+      jours_fidelite: joursFidelite,
       option_randonnee: d.option_randonnee,
       option_album: d.option_album,
       option_collier: d.option_collier,
       statut: 'confirme'
     };
-    if (d.client_id) resaBody.client_id = d.client_id;
 
     await sb('reservations', { method: 'POST', body: resaBody });
 
-    // Mise à jour fidélité si client existant — une carte par chien
-    if (d.client_id && joursFidelite > 0) {
+    // Mise à jour fidélité — une carte par chien
+    if (joursFidelite > 0) {
       const noms = (getChiens(d) || [{ nom: d.chien_nom }]).map(c => c.nom).filter(Boolean);
       for (const nom of noms) {
-        await mettreAJourFidelite(d.client_id, nom, joursFidelite);
+        await mettreAJourFidelite(clientId, nom, joursFidelite);
       }
     }
 
     allDemandes = await sb('demandes?order=created_at.desc');
     allReservations = await sb('reservations?order=date_debut.asc');
+    allClients = await sb('clients?order=created_at.desc');
     closeModal('modal-demande');
     showToast('🎉 Réservation confirmée !', 'success');
     updateStats(); renderDashboard(); renderDemandes();
