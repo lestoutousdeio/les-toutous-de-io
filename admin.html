@@ -10,6 +10,7 @@
   :root {
     --foret: #2D5016; --foret-light: #3d6b1e;
     --or: #D4A853; --or-light: #f0d08a;
+    --terre: #8B6340;
     --creme: #FAF7F2; --blanc: #ffffff;
     --gris: #6B7280; --gris-light: #F3F0EB; --gris-border: #E5E0D8;
     --texte: #1C1A17;
@@ -782,7 +783,10 @@ function renderDemandes() {
 
 function demandeRow(d, compact) {
   const contact = d.prenom_contact ? `${d.prenom_contact} ${d.nom_contact}` : '—';
-  const chien = d.chien_nom || '—';
+  const chiensList = getChiens(d);
+  const chien = chiensList
+    ? chiensList.map(c => c.nom || '?').join(' + ')
+    : (d.chien_nom || '—');
   const dateD = formatDate(d.date_debut);
   const dateF = d.date_fin ? ` → ${formatDate(d.date_fin)}` : '';
   const isNew = !d.client_id;
@@ -793,7 +797,7 @@ function demandeRow(d, compact) {
       ${isNew ? '<span class="tag-nouveau">NOUVEAU</span>' : ''}
       <br><span class="text-muted">${d.email_contact || ''}</span>
     </td>
-    <td>${chien}${d.nb_chiens > 1 ? ` ×${d.nb_chiens}` : ''}</td>
+    <td>${chien}${!chiensList && d.nb_chiens > 1 ? ` ×${d.nb_chiens}` : ''}</td>
     <td><span class="badge badge-${d.service}">${labelService(d.service)}</span></td>
     <td class="text-muted">${dateD}${dateF}</td>
     <td><span class="badge badge-${d.statut}">${labelStatut(d.statut)}</span></td>
@@ -826,13 +830,11 @@ async function ouvrirDemande(id) {
     <div class="info-row"><span class="ir-label">Contact</span><span class="ir-value">${contact}</span></div>
     <div class="info-row"><span class="ir-label">Email</span><span class="ir-value">${d.email_contact || '—'}</span></div>
     <div class="info-row"><span class="ir-label">Téléphone</span><span class="ir-value">${d.telephone_contact || '—'}</span></div>
-    <div class="info-row"><span class="ir-label">Chien</span><span class="ir-value">${d.chien_nom || '—'} ${d.chien_race ? '· ' + d.chien_race : ''}</span></div>
-    <div class="info-row"><span class="ir-label">Sexe</span><span class="ir-value">${d.chien_sexe === 'femelle' ? '♀ Femelle' : d.chien_sexe === 'male_castre' ? '♂ Mâle castré' : '—'}</span></div>
-    <div class="info-row"><span class="ir-label">Poids</span><span class="ir-value">${d.chien_poids || '—'}</span></div>
+    ${blocsChiens(d)}
     <div class="info-row"><span class="ir-label">Dates</span><span class="ir-value">${formatDate(d.date_debut)}${d.date_fin ? ' → ' + formatDate(d.date_fin) : ''}</span></div>
     <div class="info-row"><span class="ir-label">Nb chiens</span><span class="ir-value">${d.nb_chiens || 1}</span></div>
     <div class="info-row"><span class="ir-label">Statut actuel</span><span class="ir-value"><span class="badge badge-${d.statut}">${labelStatut(d.statut)}</span></span></div>
-    ${d.message ? `<div class="info-row"><span class="ir-label">Message</span><span class="ir-value" style="max-width:260px;word-break:break-word;">${d.message}</span></div>` : ''}
+    ${messageAffiche(d) ? `<div class="info-row"><span class="ir-label">Message</span><span class="ir-value" style="max-width:260px;word-break:break-word;white-space:pre-line;">${messageAffiche(d)}</span></div>` : ''}
     ${d.montant_total ? `<div class="info-row"><span class="ir-label">Montant</span><span class="ir-value fw-600">${d.montant_total} € (acompte : ${d.montant_acompte} €)</span></div>` : ''}
   `;
 
@@ -986,18 +988,21 @@ async function confirmerAcceptation() {
       body: {
         statut: 'acceptee',
         notes_iolana: note,
-        traitee_le: new Date().toISOString()
+        traitee_le: new Date().toISOString(),
+        // Sauvegardés en base : survivent au rechargement de la page
+        montant_total: montantTotal,
+        montant_acompte: montantAcompte,
+        horaire_arrivee: arrivee,
+        horaire_depart: depart,
+        jours_fidelite: joursFidelite
       }
     });
     const idx = allDemandes.findIndex(x => x.id === id);
     if (idx > -1) {
       allDemandes[idx].statut = 'acceptee';
-      // Stocker les montants en mémoire JS pour confirmerVirement
-      allDemandes[idx]._montantTotal = montantTotal;
-      allDemandes[idx]._montantAcompte = montantAcompte;
-      allDemandes[idx]._arrivee = arrivee;
-      allDemandes[idx]._depart = depart;
-      allDemandes[idx]._joursFidelite = joursFidelite;
+      allDemandes[idx].montant_total = montantTotal;
+      allDemandes[idx].montant_acompte = montantAcompte;
+      allDemandes[idx].jours_fidelite = joursFidelite;
     }
     closeModal('modal-acceptation');
     closeModal('modal-demande');
@@ -1012,9 +1017,9 @@ async function confirmerAcceptation() {
 async function confirmerVirement(id) {
   const d = allDemandes.find(x => x.id === id);
   if (!d) return;
-  const joursFidelite = d._joursFidelite || 0;
-  const montantTotal = d._montantTotal || d.montant_total || 0;
-  const montantAcompte = d._montantAcompte || d.montant_acompte || 0;
+  const joursFidelite = d.jours_fidelite || 0;
+  const montantTotal = d.montant_total || 0;
+  const montantAcompte = d.montant_acompte || 0;
   try {
     await sb(`demandes?id=eq.${id}`, { method: 'PATCH', body: { statut: 'virement_ok', traitee_le: new Date().toISOString() } });
 
@@ -1026,6 +1031,7 @@ async function confirmerVirement(id) {
       date_fin: d.date_fin,
       nb_chiens: d.nb_chiens || 1,
       chien_nom: d.chien_nom || '',
+      chiens_json: getChiens(d),
       montant_total: montantTotal,
       montant_acompte: montantAcompte,
       acompte_recu: true,
@@ -1039,9 +1045,12 @@ async function confirmerVirement(id) {
 
     await sb('reservations', { method: 'POST', body: resaBody });
 
-    // Mise à jour fidélité si client existant
+    // Mise à jour fidélité si client existant — une carte par chien
     if (d.client_id && joursFidelite > 0) {
-      await mettreAJourFidelite(d.client_id, d.chien_nom, joursFidelite);
+      const noms = (getChiens(d) || [{ nom: d.chien_nom }]).map(c => c.nom).filter(Boolean);
+      for (const nom of noms) {
+        await mettreAJourFidelite(d.client_id, nom, joursFidelite);
+      }
     }
 
     allDemandes = await sb('demandes?order=created_at.desc');
@@ -1350,6 +1359,50 @@ function formatDate(d) {
   return dt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: dt.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined });
 }
 
+// ── Chiens structurés (chiens_json) avec repli sur les anciens champs ──
+function getChiens(d) {
+  let c = d.chiens_json;
+  if (typeof c === 'string') { try { c = JSON.parse(c); } catch(e) { c = null; } }
+  return Array.isArray(c) && c.length ? c : null;
+}
+
+function labelSexe(s) {
+  return s === 'femelle' ? '♀ Femelle' : s === 'male_castre' ? '♂ Mâle castré' : '—';
+}
+
+function blocsChiens(d) {
+  const chiens = getChiens(d);
+  if (!chiens) {
+    // Anciennes demandes : un seul chien structuré
+    return `
+      <div class="info-row"><span class="ir-label">Chien</span><span class="ir-value">${d.chien_nom || '—'} ${d.chien_race ? '· ' + d.chien_race : ''}</span></div>
+      <div class="info-row"><span class="ir-label">Sexe</span><span class="ir-value">${labelSexe(d.chien_sexe)}</span></div>
+      <div class="info-row"><span class="ir-label">Poids</span><span class="ir-value">${d.chien_poids || '—'}</span></div>`;
+  }
+  return chiens.map((c, i) => `
+    <div style="background:var(--gris-light);border-radius:10px;padding:0.75rem 1rem;margin:0.6rem 0;">
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--foret);margin-bottom:0.4rem;">
+        🐾 ${chiens.length > 1 ? `Chien ${i+1}` : 'Chien'} — ${c.nom || '—'}
+      </div>
+      <div class="info-row" style="padding:0.35rem 0;"><span class="ir-label">Race</span><span class="ir-value">${c.race || '—'}</span></div>
+      <div class="info-row" style="padding:0.35rem 0;"><span class="ir-label">Âge</span><span class="ir-value">${c.age || '—'}</span></div>
+      <div class="info-row" style="padding:0.35rem 0;"><span class="ir-label">Poids</span><span class="ir-value">${c.poids || '—'}</span></div>
+      <div class="info-row" style="padding:0.35rem 0;"><span class="ir-label">Sexe</span><span class="ir-value">${labelSexe(c.sexe)}</span></div>
+      ${c.infos ? `<div class="info-row" style="padding:0.35rem 0;"><span class="ir-label">Infos</span><span class="ir-value" style="max-width:240px;word-break:break-word;">${c.infos}</span></div>` : ''}
+    </div>`).join('');
+}
+
+function messageAffiche(d) {
+  if (!d.message) return '';
+  // Si les chiens sont structurés, le résumé texte des chiens est redondant :
+  // on ne garde que la partie « Options randonnée » si elle existe.
+  if (getChiens(d)) {
+    const idx = d.message.indexOf('Options randonnée');
+    return idx > -1 ? d.message.slice(idx) : '';
+  }
+  return d.message;
+}
+
 function labelService(s) {
   return { pension: 'Pension', randonnee: 'Randonnée', visite: 'Visite', balade: 'Balade' }[s] || s;
 }
@@ -1476,7 +1529,7 @@ async function envoyerEmailAcceptation(demande) {
     await emailjs.send('service_r8y448c', 'garde_acceptee', {
       email: demande.email_contact || '',
       prenom: demande.prenom_contact || '',
-      chien_nom: demande.chien_nom || '',
+      chien_nom: (getChiens(demande) || []).map(c => c.nom).filter(Boolean).join(', ') || demande.chien_nom || '',
       date_debut: formatDate(demande.date_debut),
       date_fin: formatDate(demande.date_fin),
       montant_total: demande.montant_total || '',

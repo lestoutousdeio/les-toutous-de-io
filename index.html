@@ -1571,6 +1571,8 @@ async function submitBooking() {
       date_debut: dateDebut || null,
       date_fin: dateFin || null,
       nb_chiens: nbChiens,
+      // Tous les chiens en structuré (l'admin les affiche un par un)
+      chiens_json: chiens,
       option_randonnee: hasRando,
       option_album: hasAlbum,
       option_collier: hasCollier,
