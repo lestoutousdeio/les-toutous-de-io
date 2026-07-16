@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin · Les Toutous de Io</title>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --foret: #2D5016; --foret-light: #3d6b1e;
+    --or: #D4A853; --or-light: #f0d08a;
+    --creme: #FAF7F2; --blanc: #ffffff;
+    --gris: #6B7280; --gris-light: #F3F0EB; --gris-border: #E5E0D8;
+    --texte: #1C1A17;
+    --danger: #DC2626; --danger-light: #FEF2F2;
+    --success: #16A34A; --success-light: #F0FDF4;
+    --warning: #D97706; --warning-light: #FFFBEB;
+    --info: #2563EB; --info-light: #EFF6FF;
+    --sidebar-w: 220px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: #F1EDE6; color: var(--texte); display: flex; min-height: 100vh; }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: var(--sidebar-w); background: var(--foret); color: white;
+    display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 50;
+  }
+  .sidebar-brand {
+    padding: 1.5rem 1.25rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .sidebar-brand .brand-name {
+    font-family: 'Playfair Display', serif; font-size: 1rem; color: white; line-height: 1.2;
+  }
+  .sidebar-brand .brand-sub { font-size: 0.7rem; color: rgba(255,255,255,0.5); margin-top: 2px; }
+  .sidebar-nav { flex: 1; padding: 1rem 0; }
+  .nav-item {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.65rem 1.25rem; font-size: 0.85rem; font-weight: 500;
+    color: rgba(255,255,255,0.7); cursor: pointer; transition: all 0.15s;
+    border-left: 3px solid transparent;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.07); color: white; }
+  .nav-item.active { background: rgba(255,255,255,0.12); color: white; border-left-color: var(--or); }
+  .nav-item .nav-icon { font-size: 1.1rem; width: 20px; text-align: center; }
+  .nav-badge {
+    margin-left: auto; background: var(--danger); color: white;
+    font-size: 0.65rem; font-weight: 700; padding: 2px 6px; border-radius: 10px;
+  }
+  .sidebar-footer {
+    padding: 1rem 1.25rem; border-top: 1px solid rgba(255,255,255,0.1);
+    font-size: 0.75rem; color: rgba(255,255,255,0.4);
+  }
+
+  /* ── MAIN ── */
+  .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .topbar {
+    background: white; border-bottom: 1px solid var(--gris-border);
+    padding: 0 2rem; height: 56px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 40;
+  }
+  .topbar-title { font-weight: 600; font-size: 1rem; color: var(--texte); }
+  .topbar-right { display: flex; align-items: center; gap: 1rem; }
+  .topbar-date { font-size: 0.78rem; color: var(--gris); }
+  .avatar { width: 32px; height: 32px; background: var(--foret); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.8rem; font-weight: 700; }
+
+  .content { padding: 2rem; flex: 1; }
+
+  /* ── PAGES ── */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── STATS ── */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+  .stat-card {
+    background: white; border-radius: 12px; padding: 1.25rem 1.5rem;
+    border: 1px solid var(--gris-border);
+  }
+  .stat-card .sc-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gris); margin-bottom: 0.5rem; }
+  .stat-card .sc-value { font-size: 2rem; font-weight: 700; color: var(--texte); line-height: 1; }
+  .stat-card .sc-sub { font-size: 0.75rem; color: var(--gris); margin-top: 4px; }
+  .stat-card.urgent .sc-value { color: var(--danger); }
+  .stat-card.ok .sc-value { color: var(--success); }
+
+  /* ── TABLES ── */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .section-header h2 { font-size: 1rem; font-weight: 600; color: var(--texte); }
+  .section-header .sh-sub { font-size: 0.78rem; color: var(--gris); margin-top: 1px; }
+  .card-wrap { background: white; border-radius: 12px; border: 1px solid var(--gris-border); overflow: hidden; margin-bottom: 2rem; }
+  table { width: 100%; border-collapse: collapse; }
+  thead { background: var(--gris-light); }
+  th { padding: 0.65rem 1rem; text-align: left; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gris); white-space: nowrap; }
+  td { padding: 0.85rem 1rem; font-size: 0.85rem; border-top: 1px solid var(--gris-border); vertical-align: middle; }
+  tr:hover td { background: #FAFAF8; }
+  .empty-state { padding: 3rem; text-align: center; color: var(--gris); font-size: 0.875rem; }
+  .empty-state .es-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+
+  /* ── BADGES ── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; white-space: nowrap;
+  }
+  .badge-attente { background: var(--warning-light); color: var(--warning); }
+  .badge-rencontre { background: var(--info-light); color: var(--info); }
+  .badge-test { background: #EDE9FE; color: #7C3AED; }
+  .badge-acceptee { background: var(--success-light); color: var(--success); }
+  .badge-virement { background: #DCFCE7; color: #15803D; }
+  .badge-refusee { background: var(--danger-light); color: var(--danger); }
+  .badge-nouveau { background: #FFF7ED; color: #C2410C; }
+  .badge-valide { background: var(--success-light); color: var(--success); }
+  .badge-confirme { background: var(--success-light); color: var(--success); }
+  .badge-en_cours { background: var(--info-light); color: var(--info); }
+  .badge-termine { background: var(--gris-light); color: var(--gris); }
+  .badge-pension { background: #F0FDF4; color: #166534; }
+  .badge-randonnee { background: #EFF6FF; color: #1D4ED8; }
+  .badge-visite { background: #FFF7ED; color: #C2410C; }
+  .badge-balade { background: #FDF4FF; color: #7E22CE; }
+
+  /* ── ACTIONS ── */
+  .actions { display: flex; gap: 0.4rem; }
+  .btn {
+    padding: 5px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 600;
+    cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap;
+  }
+  .btn-green { background: var(--success); color: white; }
+  .btn-green:hover { background: #15803d; }
+  .btn-red { background: var(--danger); color: white; }
+  .btn-red:hover { background: #b91c1c; }
+  .btn-blue { background: var(--info); color: white; }
+  .btn-blue:hover { background: #1d4ed8; }
+  .btn-gray { background: var(--gris-light); color: var(--texte); }
+  .btn-gray:hover { background: var(--gris-border); }
+  .btn-or { background: var(--or); color: var(--texte); }
+  .btn-or:hover { background: #c4943d; }
+  .btn-primary-full { width: 100%; background: var(--foret); color: white; padding: 0.75rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; transition: background 0.2s; }
+  .btn-primary-full:hover { background: var(--foret-light); }
+
+  /* ── PLANNING ── */
+  .planning-controls { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .week-nav { display: flex; align-items: center; gap: 0.5rem; }
+  .wn-btn { background: white; border: 1px solid var(--gris-border); border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 1rem; }
+  .wn-btn:hover { background: var(--gris-light); }
+  .wn-label { font-weight: 600; font-size: 0.9rem; min-width: 180px; text-align: center; }
+
+  .planning-table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; border: 1px solid var(--gris-border); }
+  .planning-table th { background: var(--foret); color: white; padding: 0.75rem 0.5rem; text-align: center; font-size: 0.78rem; font-weight: 600; }
+  .planning-table th.today-col { background: var(--foret-light); }
+  .planning-table td { padding: 0.5rem; vertical-align: top; min-height: 80px; border: 1px solid var(--gris-border); min-width: 100px; }
+  .planning-table td.row-label { background: var(--gris-light); font-size: 0.75rem; font-weight: 600; color: var(--gris); text-align: center; padding: 0.5rem; vertical-align: middle; min-width: 70px; }
+  .planning-table td.today-col { background: #FAFFF5; }
+  .dog-pill {
+    display: block; background: var(--foret); color: white;
+    border-radius: 6px; padding: 4px 8px; font-size: 0.72rem; font-weight: 500;
+    margin-bottom: 3px; cursor: pointer;
+  }
+  .dog-pill:hover { background: var(--foret-light); }
+  .dog-pill.rando { background: var(--info); }
+  .dog-pill.pending { background: var(--or); color: var(--texte); }
+  .cap-bar { height: 3px; background: var(--gris-border); border-radius: 2px; margin-top: 4px; }
+  .cap-fill { height: 100%; border-radius: 2px; }
+
+  /* ── DISPO ── */
+  .dispo-calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .dispo-header { text-align: center; font-size: 0.72rem; font-weight: 600; color: var(--gris); padding: 4px; }
+  .dispo-day {
+    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    border-radius: 8px; font-size: 0.82rem; cursor: pointer; transition: all 0.15s;
+    border: 1.5px solid transparent; position: relative;
+  }
+  .dispo-day:hover { border-color: var(--or); }
+  .dispo-day.empty { cursor: default; }
+  .dispo-day.dispo { background: #DCFCE7; color: #166534; }
+  .dispo-day.bloque { background: var(--danger-light); color: var(--danger); }
+  .dispo-day.complet { background: #FEE2E2; color: #DC2626; text-decoration: line-through; }
+  .dispo-day.reserve { background: var(--info-light); color: var(--info); }
+  .dispo-day.today { font-weight: 700; border-color: var(--foret); }
+  .dispo-day.past { opacity: 0.35; cursor: default; }
+  .dispo-day.selected { border-color: var(--foret); background: rgba(45,80,22,0.1); }
+
+  /* ── MODAL ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: center; justify-content: center; padding: 1rem; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: white; border-radius: 16px; padding: 2rem; max-width: 520px; width: 100%; max-height: 90vh; overflow-y: auto; }
+  .modal h3 { font-family: 'Playfair Display', serif; font-size: 1.3rem; color: var(--foret); margin-bottom: 0.5rem; }
+  .modal-sub { font-size: 0.82rem; color: var(--gris); margin-bottom: 1.5rem; line-height: 1.5; }
+  .modal-actions { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+  .info-row { display: flex; justify-content: space-between; padding: 0.6rem 0; border-bottom: 1px solid var(--gris-border); font-size: 0.85rem; }
+  .info-row:last-child { border-bottom: none; }
+  .info-row .ir-label { color: var(--gris); }
+  .info-row .ir-value { font-weight: 500; text-align: right; }
+
+  /* ── FORM ── */
+  .form-group { margin-bottom: 1rem; }
+  .form-group label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--gris); margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; border: 1.5px solid var(--gris-border); border-radius: 8px;
+    padding: 0.6rem 0.85rem; font-size: 0.875rem; font-family: 'Inter', sans-serif;
+    color: var(--texte); background: white; outline: none; transition: border-color 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--foret); }
+  .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .form-group textarea { resize: vertical; min-height: 80px; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 1.5rem; right: 1.5rem;
+    background: var(--texte); color: white;
+    padding: 0.85rem 1.25rem; border-radius: 10px; font-size: 0.85rem; font-weight: 500;
+    z-index: 200; transform: translateY(80px); opacity: 0; transition: all 0.3s;
+    max-width: 320px; box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { background: var(--success); }
+  .toast.error { background: var(--danger); }
+
+  /* ── LOADING ── */
+  .loading { text-align: center; padding: 3rem; color: var(--gris); font-size: 0.875rem; }
+  .spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid var(--gris-border); border-top-color: var(--foret); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 0.5rem; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 600px) {
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .content { padding: 1rem; }
+  }
+
+  .chip-service { font-size: 0.72rem; font-weight: 600; }
+  .text-muted { color: var(--gris); font-size: 0.8rem; }
+  .fw-600 { font-weight: 600; }
+  .tag-nouveau { display: inline-block; background: #FFF7ED; color: #C2410C; font-size: 0.65rem; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-left: 4px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ ÉCRAN MOT DE PASSE ═══════════ -->
+<div id="login-screen" style="
+  position:fixed; inset:0; background:var(--foret); z-index:999;
+  display:flex; align-items:center; justify-content:center; padding:1rem;
+">
+  <div style="background:white; border-radius:16px; padding:2.5rem; max-width:380px; width:100%; text-align:center;">
+    <div style="font-size:2.5rem; margin-bottom:1rem;">🐾</div>
+    <div style="font-family:'Playfair Display',serif; font-size:1.4rem; color:var(--foret); margin-bottom:0.25rem;">Les Toutous de Io</div>
+    <div style="font-size:0.82rem; color:var(--gris); margin-bottom:2rem;">Espace administration · Accès restreint</div>
+    <div style="text-align:left; margin-bottom:1rem;">
+      <label style="font-size:0.78rem; font-weight:600; color:var(--gris); text-transform:uppercase; letter-spacing:0.05em;">Mot de passe</label>
+      <input type="password" id="login-pwd" placeholder="••••••••"
+        style="width:100%; margin-top:0.4rem; border:1.5px solid #E5E0D8; border-radius:8px; padding:0.75rem 1rem; font-size:1rem; outline:none; font-family:'Inter',sans-serif;"
+        onkeydown="if(event.key==='Enter') verifierMdp()">
+    </div>
+    <div id="login-error" style="color:#DC2626; font-size:0.82rem; margin-bottom:0.75rem; display:none;">Mot de passe incorrect.</div>
+    <button onclick="verifierMdp()" style="
+      width:100%; background:var(--foret); color:white; border:none; border-radius:8px;
+      padding:0.85rem; font-size:0.95rem; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif;
+    ">Accéder à l'admin</button>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-name">🐾 Les Toutous de Io</div>
+    <div class="brand-sub">Espace administration</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-item active" onclick="showPage('dashboard')">
+      <span class="nav-icon">📊</span> Dashboard
+      <span class="nav-badge" id="badge-demandes">0</span>
+    </div>
+    <div class="nav-item" onclick="showPage('demandes')">
+      <span class="nav-icon">📨</span> Demandes
+    </div>
+    <div class="nav-item" onclick="showPage('planning')">
+      <span class="nav-icon">🗓️</span> Planning
+    </div>
+    <div class="nav-item" onclick="showPage('clients')">
+      <span class="nav-icon">👤</span> Clients
+    </div>
+    <div class="nav-item" onclick="showPage('disponibilites')">
+      <span class="nav-icon">📅</span> Disponibilités
+    </div>
+    <div class="nav-item" onclick="showPage('fidelite')">
+      <span class="nav-icon">🎁</span> Fidélité
+    </div>
+  </nav>
+  <div class="sidebar-footer">Iolana Mendy · Admin</div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="page-title">Dashboard</div>
+    <div class="topbar-right">
+      <span class="topbar-date" id="today-label"></span>
+      <div class="avatar">I</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ═══════════════════════════════ DASHBOARD ═══════════════════════════════ -->
+    <div class="page active" id="page-dashboard">
+
+      <div class="stats-row" id="stats-row">
+        <div class="stat-card urgent">
+          <div class="sc-label">Demandes en attente</div>
+          <div class="sc-value" id="stat-demandes">—</div>
+          <div class="sc-sub">à traiter</div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-label">Chiens aujourd'hui</div>
+          <div class="sc-value" id="stat-today">—</div>
+          <div class="sc-sub">/ 4 max</div>
+        </div>
+        <div class="stat-card ok">
+          <div class="sc-label">Clients validés</div>
+          <div class="sc-value" id="stat-clients">—</div>
+          <div class="sc-sub">peuvent réserver</div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-label">Randonnée jeudi</div>
+          <div class="sc-value" id="stat-rando">—</div>
+          <div class="sc-sub">/ 5 max</div>
+        </div>
+      </div>
+
+      <!-- Demandes urgentes -->
+      <div class="section-header">
+        <div>
+          <h2>Demandes à traiter</h2>
+          <div class="sh-sub">Nouvelles demandes en attente de ta réponse</div>
+        </div>
+        <button class="btn btn-gray" onclick="showPage('demandes')">Voir tout →</button>
+      </div>
+      <div class="card-wrap" id="dashboard-demandes">
+        <div class="loading"><div class="spinner"></div><br>Chargement…</div>
+      </div>
+
+      <!-- Planning aujourd'hui -->
+      <div class="section-header" style="margin-top:1.5rem;">
+        <div>
+          <h2>Séjours en cours</h2>
+          <div class="sh-sub">Chiens présents aujourd'hui</div>
+        </div>
+      </div>
+      <div class="card-wrap" id="dashboard-sejours">
+        <div class="loading"><div class="spinner"></div><br>Chargement…</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════ DEMANDES ═══════════════════════════════ -->
+    <div class="page" id="page-demandes">
+      <div class="section-header">
+        <div>
+          <h2>Toutes les demandes</h2>
+          <div class="sh-sub">Nouvelles demandes + suivi parcours</div>
+        </div>
+        <button class="btn btn-or" onclick="openModal('modal-nouvelle-demande')">+ Saisir une demande</button>
+      </div>
+
+      <!-- Filtres -->
+      <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+        <button class="btn btn-gray filtre-btn active" onclick="filtrerDemandes('tous')">Toutes</button>
+        <button class="btn btn-gray filtre-btn" onclick="filtrerDemandes('en_attente')">En attente</button>
+        <button class="btn btn-gray filtre-btn" onclick="filtrerDemandes('rencontre')">Rencontre</button>
+        <button class="btn btn-gray filtre-btn" onclick="filtrerDemandes('test')">Test</button>
+        <button class="btn btn-gray filtre-btn" onclick="filtrerDemandes('acceptee')">Acceptées</button>
+        <button class="btn btn-gray filtre-btn" onclick="filtrerDemandes('virement_ok')">Confirmées</button>
+      </div>
+
+      <div class="card-wrap" id="table-demandes">
+        <div class="loading"><div class="spinner"></div><br>Chargement…</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════ PLANNING ═══════════════════════════════ -->
+    <div class="page" id="page-planning">
+      <div class="planning-controls">
+        <div class="week-nav">
+          <button class="wn-btn" onclick="changeWeek(-1)">‹</button>
+          <span class="wn-label" id="week-label">—</span>
+          <button class="wn-btn" onclick="changeWeek(1)">›</button>
+        </div>
+        <button class="btn btn-gray" onclick="changeWeek(0, true)">Aujourd'hui</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="planning-table" id="planning-table">
+          <thead id="planning-head"></thead>
+          <tbody id="planning-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════ CLIENTS ═══════════════════════════════ -->
+    <div class="page" id="page-clients">
+      <div class="section-header">
+        <div>
+          <h2>Clients</h2>
+          <div class="sh-sub">Tous les propriétaires enregistrés</div>
+        </div>
+      </div>
+      <div class="card-wrap" id="table-clients">
+        <div class="loading"><div class="spinner"></div><br>Chargement…</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════ DISPONIBILITÉS ═══════════════════════════════ -->
+    <div class="page" id="page-disponibilites">
+      <div class="section-header">
+        <div>
+          <h2>Gérer les disponibilités</h2>
+          <div class="sh-sub">Clique sur une date pour la bloquer ou la débloquer</div>
+        </div>
+        <button class="btn btn-or" onclick="openModal('modal-bloquer')">Bloquer une période</button>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 300px; gap: 1.5rem; align-items: start;">
+        <div class="card-wrap" style="padding: 1.5rem;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem;">
+            <div class="week-nav">
+              <button class="wn-btn" onclick="changeDispoMonth(-1)">‹</button>
+              <span class="wn-label" id="dispo-month-label" style="font-size:1rem;">—</span>
+              <button class="wn-btn" onclick="changeDispoMonth(1)">›</button>
+            </div>
+          </div>
+          <div class="dispo-calendar" id="dispo-calendar-grid">
+            <div class="dispo-header">L</div><div class="dispo-header">M</div>
+            <div class="dispo-header">M</div><div class="dispo-header">J</div>
+            <div class="dispo-header">V</div><div class="dispo-header">S</div>
+            <div class="dispo-header">D</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card-wrap" style="padding:1.25rem; margin-bottom:1rem;">
+            <div style="font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--gris); margin-bottom:0.75rem;">Légende</div>
+            <div style="display:flex; flex-direction:column; gap:0.5rem;">
+              <div style="display:flex; align-items:center; gap:0.6rem; font-size:0.82rem;">
+                <div style="width:14px;height:14px;border-radius:4px;background:#DCFCE7;"></div> Disponible
+              </div>
+              <div style="display:flex; align-items:center; gap:0.6rem; font-size:0.82rem;">
+                <div style="width:14px;height:14px;border-radius:4px;background:var(--info-light);"></div> Réservé
+              </div>
+              <div style="display:flex; align-items:center; gap:0.6rem; font-size:0.82rem;">
+                <div style="width:14px;height:14px;border-radius:4px;background:var(--danger-light);"></div> Bloqué (perso)
+              </div>
+              <div style="display:flex; align-items:center; gap:0.6rem; font-size:0.82rem;">
+                <div style="width:14px;height:14px;border-radius:4px;background:#FEE2E2;"></div> Complet (4 chiens)
+              </div>
+            </div>
+          </div>
+
+          <div class="card-wrap" style="padding:1.25rem;">
+            <div style="font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--gris); margin-bottom:0.75rem;">Périodes bloquées</div>
+            <div id="dispo-bloquees">
+              <div class="empty-state" style="padding:1rem;">Aucune période bloquée</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════ FIDÉLITÉ ═══════════════════════════════ -->
+    <div class="page" id="page-fidelite">
+      <div class="section-header">
+        <div>
+          <h2>🎁 Cartes de fidélité</h2>
+          <div class="sh-sub">1 jour offert tous les 12 jours · par chien · arrivée tardive et départ tôt non comptabilisés</div>
+        </div>
+      </div>
+      <div class="card-wrap" id="table-fidelite">
+        <div class="loading"><div class="spinner"></div><br>Chargement…</div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- ═══════════════════ MODALS ═══════════════════ -->
+
+<!-- Modal acceptation avec horaires -->
+<div class="modal-overlay" id="modal-acceptation">
+  <div class="modal">
+    <h3>✅ Accepter la garde</h3>
+    <div class="modal-sub">Précise les horaires pour calculer le tarif exact.</div>
+    <div id="accept-modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-gray" onclick="closeModal('modal-acceptation')">Annuler</button>
+      <button class="btn btn-green" onclick="confirmerAcceptation()">Confirmer & envoyer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal détail demande -->
+<div class="modal-overlay" id="modal-demande">
+  <div class="modal">
+    <h3 id="md-titre">Demande</h3>
+    <div class="modal-sub" id="md-sub"></div>
+    <div id="md-infos"></div>
+    <div class="form-group" style="margin-top:1rem;">
+      <label>Note interne (visible uniquement par toi)</label>
+      <textarea id="md-note" placeholder="Ex: Chien un peu craintif, rencontre fixée au 15/07 à 10h…" rows="3"></textarea>
+    </div>
+    <div class="modal-actions" id="md-actions"></div>
+  </div>
+</div>
+
+<!-- Modal bloquer période -->
+<div class="modal-overlay" id="modal-bloquer">
+  <div class="modal">
+    <h3>Bloquer une période</h3>
+    <div class="modal-sub">Ces dates apparaîtront comme indisponibles sur le calendrier client.</div>
+    <div class="form-row-2">
+      <div class="form-group">
+        <label>Date de début</label>
+        <input type="date" id="bloc-debut">
+      </div>
+      <div class="form-group">
+        <label>Date de fin</label>
+        <input type="date" id="bloc-fin">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Raison (usage interne)</label>
+      <input type="text" id="bloc-raison" placeholder="Ex: Vacances, Indisponible…">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-gray" onclick="closeModal('modal-bloquer')">Annuler</button>
+      <button class="btn btn-red" onclick="bloquerPeriode()">Bloquer ces dates</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nouvelle demande manuelle -->
+<div class="modal-overlay" id="modal-nouvelle-demande">
+  <div class="modal">
+    <h3>Saisir une demande</h3>
+    <div class="modal-sub">Enregistre une demande reçue par téléphone ou message.</div>
+    <div class="form-row-2">
+      <div class="form-group"><label>Prénom</label><input type="text" id="nd-prenom" placeholder="Prénom"></div>
+      <div class="form-group"><label>Nom</label><input type="text" id="nd-nom" placeholder="Nom"></div>
+    </div>
+    <div class="form-row-2">
+      <div class="form-group"><label>Email</label><input type="email" id="nd-email" placeholder="email@…"></div>
+      <div class="form-group"><label>Téléphone</label><input type="tel" id="nd-tel" placeholder="06…"></div>
+    </div>
+    <div class="form-row-2">
+      <div class="form-group"><label>Chien</label><input type="text" id="nd-chien" placeholder="Nom du chien"></div>
+      <div class="form-group"><label>Race</label><input type="text" id="nd-race" placeholder="Race"></div>
+    </div>
+    <div class="form-row-2">
+      <div class="form-group">
+        <label>Service</label>
+        <select id="nd-service">
+          <option value="pension">Pension</option>
+          <option value="randonnee">Randonnée</option>
+          <option value="visite">Visite domicile</option>
+          <option value="balade">Balade</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Nb chiens</label><input type="number" id="nd-nb" value="1" min="1" max="4"></div>
+    </div>
+    <div class="form-row-2">
+      <div class="form-group"><label>Date début</label><input type="date" id="nd-debut"></div>
+      <div class="form-group"><label>Date fin</label><input type="date" id="nd-fin"></div>
+    </div>
+    <div class="form-group"><label>Message / infos</label><textarea id="nd-message" placeholder="Notes…" rows="2"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-gray" onclick="closeModal('modal-nouvelle-demande')">Annuler</button>
+      <button class="btn btn-green" onclick="creerDemande()">Enregistrer la demande</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal client detail -->
+<div class="modal-overlay" id="modal-client">
+  <div class="modal">
+    <h3 id="mc-nom">Client</h3>
+    <div class="modal-sub" id="mc-sub"></div>
+    <div id="mc-infos"></div>
+    <div class="modal-actions">
+      <button class="btn btn-gray" onclick="closeModal('modal-client')">Fermer</button>
+      <button class="btn btn-green" id="mc-valider-btn" onclick="">Valider le compte</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// EMAILJS — init immédiat
+// ═══════════════════════════════════════════════════
+emailjs.init('QynwZusGbtsAgGQqK');
+
+// ═══════════════════════════════════════════════════
+// CONFIG SUPABASE
+// ═══════════════════════════════════════════════════
+const SUPABASE_URL = 'https://xtxekhowasjzzplkskvf.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_siYC9zq1W1LRfwgjtJ2vCg_be1Eo0-c';
+
+async function sb(path, options = {}) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': options.prefer || 'return=representation',
+      ...options.headers
+    },
+    method: options.method || 'GET',
+    body: options.body ? JSON.stringify(options.body) : undefined
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err);
+  }
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+// ═══════════════════════════════════════════════════
+// ÉTAT GLOBAL
+// ═══════════════════════════════════════════════════
+let allDemandes = [];
+let allClients = [];
+let allReservations = [];
+let allDispos = [];
+let filtreCourant = 'tous';
+let weekOffset = 0;
+let dispoMonth, dispoYear;
+let demandeActive = null;
+
+// ═══════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════
+const pageTitles = {
+  dashboard: 'Dashboard',
+  demandes: 'Demandes',
+  planning: 'Planning',
+  clients: 'Clients',
+  disponibilites: 'Disponibilités',
+  fidelite: 'Fidélité'
+};
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.textContent.trim().toLowerCase().includes(pageTitles[id].toLowerCase().slice(0, 5))) n.classList.add('active');
+  });
+  document.getElementById('page-title').textContent = pageTitles[id];
+  if (id === 'planning') renderPlanning();
+  if (id === 'disponibilites') renderDispoCalendar();
+  if (id === 'clients') renderClients();
+  if (id === 'demandes') renderDemandes();
+  if (id === 'fidelite') loadFidelite();
+}
+
+// ═══════════════════════════════════════════════════
+// CHARGEMENT DES DONNÉES
+// ═══════════════════════════════════════════════════
+async function loadAll() {
+  try {
+    [allDemandes, allClients, allReservations, allDispos] = await Promise.all([
+      sb('demandes?order=created_at.desc'),
+      sb('clients?order=created_at.desc'),
+      sb('reservations?order=date_debut.asc'),
+      sb('disponibilites?order=date_debut.asc')
+    ]);
+    updateStats();
+    renderDashboard();
+  } catch(e) {
+    showToast('Erreur de connexion à la base de données', 'error');
+    console.error(e);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════════════
+function updateStats() {
+  const enAttente = allDemandes.filter(d => ['en_attente','rencontre','test','acceptee'].includes(d.statut)).length;
+  document.getElementById('stat-demandes').textContent = enAttente;
+  document.getElementById('badge-demandes').textContent = enAttente;
+
+  const today = new Date().toISOString().split('T')[0];
+  const todayResas = allReservations.filter(r =>
+    r.statut !== 'annule' && r.date_debut <= today && (r.date_fin === null || r.date_fin >= today)
+  );
+  const nbToday = todayResas.reduce((sum, r) => sum + (r.nb_chiens || 1), 0);
+  document.getElementById('stat-today').textContent = nbToday;
+
+  const validés = allClients.filter(c => c.statut === 'valide').length;
+  document.getElementById('stat-clients').textContent = validés;
+
+  // Randonnée prochain jeudi
+  const nextJeudi = getNextJeudi();
+  const randoJeudi = allReservations.filter(r =>
+    r.service === 'randonnee' && r.date_debut === nextJeudi && r.statut !== 'annule'
+  );
+  document.getElementById('stat-rando').textContent = randoJeudi.length;
+}
+
+function getNextJeudi() {
+  const d = new Date();
+  const day = d.getDay();
+  const diff = day <= 4 ? 4 - day : 11 - day;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().split('T')[0];
+}
+
+// ═══════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════
+function renderDashboard() {
+  // Demandes urgentes
+  const urgentes = allDemandes.filter(d => ['en_attente','rencontre','test','acceptee'].includes(d.statut));
+  const divD = document.getElementById('dashboard-demandes');
+  if (!urgentes.length) {
+    divD.innerHTML = `<div class="empty-state"><div class="es-icon">✅</div>Aucune demande en attente</div>`;
+  } else {
+    divD.innerHTML = `<table>
+      <thead><tr>
+        <th>Reçue le</th><th>Contact</th><th>Chien</th><th>Service</th><th>Dates</th><th>Statut</th><th>Actions</th>
+      </tr></thead>
+      <tbody>${urgentes.slice(0,5).map(d => demandeRow(d, true)).join('')}</tbody>
+    </table>`;
+  }
+
+  // Séjours en cours
+  const today = new Date().toISOString().split('T')[0];
+  const encours = allReservations.filter(r =>
+    r.statut !== 'annule' && r.date_debut <= today && (r.date_fin === null || r.date_fin >= today)
+  );
+  const divS = document.getElementById('dashboard-sejours');
+  if (!encours.length) {
+    divS.innerHTML = `<div class="empty-state"><div class="es-icon">🏡</div>Aucun chien en séjour aujourd'hui</div>`;
+  } else {
+    divS.innerHTML = `<table>
+      <thead><tr><th>Chien</th><th>Propriétaire</th><th>Service</th><th>Départ</th><th>Jours restants</th></tr></thead>
+      <tbody>${encours.map(r => {
+        const client = allClients.find(c => c.id === r.client_id);
+        const fin = r.date_fin ? new Date(r.date_fin) : null;
+        const jours = fin ? Math.ceil((fin - new Date()) / 86400000) : '—';
+        return `<tr>
+          <td class="fw-600">${r.chien_nom || '—'}</td>
+          <td>${client ? client.prenom + ' ' + client.nom : '—'}</td>
+          <td><span class="badge badge-${r.service}">${labelService(r.service)}</span></td>
+          <td>${formatDate(r.date_fin)}</td>
+          <td>${jours !== '—' ? jours + ' j' : '—'}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// DEMANDES
+// ═══════════════════════════════════════════════════
+function renderDemandes() {
+  let filtered = filtreCourant === 'tous' ? allDemandes : allDemandes.filter(d => d.statut === filtreCourant);
+  const div = document.getElementById('table-demandes');
+  if (!filtered.length) {
+    div.innerHTML = `<div class="empty-state"><div class="es-icon">📨</div>Aucune demande dans cette catégorie</div>`;
+    return;
+  }
+  div.innerHTML = `<table>
+    <thead><tr>
+      <th>Reçue le</th><th>Contact</th><th>Chien</th><th>Service</th><th>Dates</th><th>Statut</th><th>Actions</th>
+    </tr></thead>
+    <tbody>${filtered.map(d => demandeRow(d, false)).join('')}</tbody>
+  </table>`;
+}
+
+function demandeRow(d, compact) {
+  const contact = d.prenom_contact ? `${d.prenom_contact} ${d.nom_contact}` : '—';
+  const chien = d.chien_nom || '—';
+  const dateD = formatDate(d.date_debut);
+  const dateF = d.date_fin ? ` → ${formatDate(d.date_fin)}` : '';
+  const isNew = !d.client_id;
+  return `<tr>
+    <td class="text-muted">${formatDate(d.created_at)}</td>
+    <td>
+      <span class="fw-600">${contact}</span>
+      ${isNew ? '<span class="tag-nouveau">NOUVEAU</span>' : ''}
+      <br><span class="text-muted">${d.email_contact || ''}</span>
+    </td>
+    <td>${chien}${d.nb_chiens > 1 ? ` ×${d.nb_chiens}` : ''}</td>
+    <td><span class="badge badge-${d.service}">${labelService(d.service)}</span></td>
+    <td class="text-muted">${dateD}${dateF}</td>
+    <td><span class="badge badge-${d.statut}">${labelStatut(d.statut)}</span></td>
+    <td>
+      <div class="actions">
+        <button class="btn btn-blue" onclick="ouvrirDemande('${d.id}')">Voir</button>
+      </div>
+    </td>
+  </tr>`;
+}
+
+function filtrerDemandes(statut) {
+  filtreCourant = statut;
+  document.querySelectorAll('.filtre-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  renderDemandes();
+}
+
+async function ouvrirDemande(id) {
+  demandeActive = allDemandes.find(d => d.id === id);
+  if (!demandeActive) return;
+  const d = demandeActive;
+  const contact = d.prenom_contact ? `${d.prenom_contact} ${d.nom_contact}` : '—';
+
+  document.getElementById('md-titre').textContent = `Demande de ${contact}`;
+  document.getElementById('md-sub').textContent = `Reçue le ${formatDate(d.created_at)} · ${labelService(d.service)}`;
+  document.getElementById('md-note').value = d.notes_iolana || '';
+
+  document.getElementById('md-infos').innerHTML = `
+    <div class="info-row"><span class="ir-label">Contact</span><span class="ir-value">${contact}</span></div>
+    <div class="info-row"><span class="ir-label">Email</span><span class="ir-value">${d.email_contact || '—'}</span></div>
+    <div class="info-row"><span class="ir-label">Téléphone</span><span class="ir-value">${d.telephone_contact || '—'}</span></div>
+    <div class="info-row"><span class="ir-label">Chien</span><span class="ir-value">${d.chien_nom || '—'} ${d.chien_race ? '· ' + d.chien_race : ''}</span></div>
+    <div class="info-row"><span class="ir-label">Sexe</span><span class="ir-value">${d.chien_sexe === 'femelle' ? '♀ Femelle' : d.chien_sexe === 'male_castre' ? '♂ Mâle castré' : '—'}</span></div>
+    <div class="info-row"><span class="ir-label">Poids</span><span class="ir-value">${d.chien_poids || '—'}</span></div>
+    <div class="info-row"><span class="ir-label">Dates</span><span class="ir-value">${formatDate(d.date_debut)}${d.date_fin ? ' → ' + formatDate(d.date_fin) : ''}</span></div>
+    <div class="info-row"><span class="ir-label">Nb chiens</span><span class="ir-value">${d.nb_chiens || 1}</span></div>
+    <div class="info-row"><span class="ir-label">Statut actuel</span><span class="ir-value"><span class="badge badge-${d.statut}">${labelStatut(d.statut)}</span></span></div>
+    ${d.message ? `<div class="info-row"><span class="ir-label">Message</span><span class="ir-value" style="max-width:260px;word-break:break-word;">${d.message}</span></div>` : ''}
+    ${d.montant_total ? `<div class="info-row"><span class="ir-label">Montant</span><span class="ir-value fw-600">${d.montant_total} € (acompte : ${d.montant_acompte} €)</span></div>` : ''}
+  `;
+
+  // Boutons selon statut
+  const actions = document.getElementById('md-actions');
+  actions.innerHTML = `<button class="btn btn-gray" onclick="closeModal('modal-demande')">Fermer</button>`;
+
+  if (d.statut === 'en_attente') {
+    actions.innerHTML += `
+      <button class="btn btn-blue" onclick="changerStatutDemande('${d.id}', 'rencontre')">📅 Rencontre planifiée</button>
+      <button class="btn btn-red" onclick="changerStatutDemande('${d.id}', 'refusee')">✗ Refuser</button>`;
+  } else if (d.statut === 'rencontre') {
+    actions.innerHTML += `
+      <button class="btn btn-blue" onclick="changerStatutDemande('${d.id}', 'test')">🐾 Test planifié</button>
+      <button class="btn btn-red" onclick="changerStatutDemande('${d.id}', 'refusee')">✗ Refuser</button>`;
+  } else if (d.statut === 'test') {
+    actions.innerHTML += `
+      <button class="btn btn-green" onclick="accepterDemande('${d.id}')">✓ Accepter la garde</button>
+      <button class="btn btn-red" onclick="changerStatutDemande('${d.id}', 'refusee')">✗ Refuser</button>`;
+  } else if (d.statut === 'acceptee') {
+    actions.innerHTML += `
+      <button class="btn btn-green" onclick="confirmerVirement('${d.id}')">💶 Virement reçu → Confirmer</button>`;
+  }
+
+  openModal('modal-demande');
+}
+
+async function changerStatutDemande(id, newStatut) {
+  try {
+    const note = document.getElementById('md-note').value;
+    await sb(`demandes?id=eq.${id}`, {
+      method: 'PATCH',
+      body: { statut: newStatut, notes_iolana: note, traitee_le: new Date().toISOString() }
+    });
+    const idx = allDemandes.findIndex(d => d.id === id);
+    if (idx > -1) allDemandes[idx].statut = newStatut;
+    closeModal('modal-demande');
+    showToast(`Statut mis à jour : ${labelStatut(newStatut)}`, 'success');
+    updateStats();
+    renderDashboard();
+    renderDemandes();
+  } catch(e) {
+    showToast('Erreur lors de la mise à jour', 'error');
+  }
+}
+
+async function accepterDemande(id) {
+  const d = allDemandes.find(x => x.id === id);
+  if (!d) return;
+  closeModal('modal-demande');
+  // Petit délai pour laisser le DOM se mettre à jour
+  setTimeout(() => ouvrirModalAcceptation(d), 100);
+}
+
+function ouvrirModalAcceptation(d) {
+  const nb = d.nb_chiens || 1;
+  const nbNuits = d.date_fin && d.date_debut
+    ? Math.ceil((new Date(d.date_fin) - new Date(d.date_debut)) / 86400000) : 1;
+
+  // Construire le modal dynamiquement
+  document.getElementById('accept-modal-body').innerHTML = `
+    <div class="info-row"><span class="ir-label">Client</span><span class="ir-value">${d.prenom_contact} ${d.nom_contact}</span></div>
+    <div class="info-row"><span class="ir-label">Dates</span><span class="ir-value">${formatDate(d.date_debut)} → ${formatDate(d.date_fin)}</span></div>
+    <div class="info-row"><span class="ir-label">Durée</span><span class="ir-value">${nbNuits} nuit(s) · ${nb} chien(s)</span></div>
+
+    <div style="background:var(--gris-light);border-radius:10px;padding:1rem;margin:1rem 0;">
+      <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--gris);margin-bottom:0.75rem;">Horaires (impact sur le tarif)</div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label>Arrivée</label>
+          <select id="accept-arrivee" onchange="recalcAccept('${d.id}')">
+            <option value="normal">Avant 18h — tarif plein</option>
+            <option value="tard">Après 18h — 15 € (−10 €)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Départ</label>
+          <select id="accept-depart" onchange="recalcAccept('${d.id}')">
+            <option value="normal">Après 11h — tarif plein</option>
+            <option value="tot">Avant 11h — 15 € (−10 €)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div id="accept-calcul" style="background:white;border:1px solid var(--gris-border);border-radius:10px;padding:1rem;margin-bottom:1rem;">
+      <!-- rempli par recalcAccept -->
+    </div>
+  `;
+
+  recalcAccept(d.id);
+  openModal('modal-acceptation');
+}
+
+function recalcAccept(id) {
+  const d = allDemandes.find(x => x.id === id);
+  if (!d) return;
+  const nb = d.nb_chiens || 1;
+  const rate = nb > 1 ? 20 : 25;
+  const nbNuits = d.date_fin && d.date_debut
+    ? Math.ceil((new Date(d.date_fin) - new Date(d.date_debut)) / 86400000) : 1;
+
+  const arrivee = document.getElementById('accept-arrivee')?.value || 'normal';
+  const depart = document.getElementById('accept-depart')?.value || 'normal';
+
+  // Jours pleins = nbNuits - 1 (sans premier et dernier) + tarif réduit pour arrivée/départ
+  const joursPlein = Math.max(0, nbNuits - (arrivee === 'tard' ? 1 : 0) - (depart === 'tot' ? 1 : 0));
+  const joursReduit = (arrivee === 'tard' ? 1 : 0) + (depart === 'tot' ? 1 : 0);
+  // Jours comptabilisés fidélité (sans les jours réduits)
+  const joursFidelite = joursPlein;
+
+  const baseCalc = (joursPlein * rate * nb) + (joursReduit * 15 * nb);
+  const montantTotal = d.service === 'pension' ? baseCalc : (d.service === 'randonnee' ? 30 * nb : 0);
+  const montantAcompte = Math.round(montantTotal * 0.2);
+
+  document.getElementById('accept-calcul').innerHTML = `
+    <div class="summary-line" style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+      <span style="font-size:0.85rem;color:var(--gris);">Jours plein tarif (${rate} €)</span>
+      <span style="font-weight:600;">${joursPlein} × ${rate} € × ${nb} = ${joursPlein * rate * nb} €</span>
+    </div>
+    ${joursReduit > 0 ? `<div class="summary-line" style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+      <span style="font-size:0.85rem;color:var(--gris);">Jours tarif réduit (15 €)</span>
+      <span style="font-weight:600;">${joursReduit} × 15 € × ${nb} = ${joursReduit * 15 * nb} €</span>
+    </div>` : ''}
+    <hr style="border:none;border-top:1px solid var(--gris-border);margin:0.75rem 0;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-weight:700;">Total</span>
+      <span style="font-size:1.3rem;font-weight:700;color:var(--foret);">${montantTotal} €</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:0.25rem;">
+      <span style="font-size:0.82rem;color:var(--gris);">Acompte 20%</span>
+      <span style="font-size:0.9rem;font-weight:600;color:var(--terre);">${montantAcompte} €</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:0.25rem;">
+      <span style="font-size:0.78rem;color:var(--gris);">Jours fidélité comptabilisés</span>
+      <span style="font-size:0.82rem;font-weight:600;color:var(--foret);">${joursFidelite} j</span>
+    </div>
+  `;
+
+  // Stocker pour confirmation
+  window._acceptData = { id, montantTotal, montantAcompte, arrivee, depart, joursFidelite, nb };
+}
+
+async function confirmerAcceptation() {
+  const { id, montantTotal, montantAcompte, arrivee, depart, joursFidelite } = window._acceptData;
+  const d = allDemandes.find(x => x.id === id);
+  const note = document.getElementById('md-note')?.value || '';
+  try {
+    await sb(`demandes?id=eq.${id}`, {
+      method: 'PATCH',
+      body: {
+        statut: 'acceptee',
+        notes_iolana: note,
+        traitee_le: new Date().toISOString()
+      }
+    });
+    const idx = allDemandes.findIndex(x => x.id === id);
+    if (idx > -1) {
+      allDemandes[idx].statut = 'acceptee';
+      // Stocker les montants en mémoire JS pour confirmerVirement
+      allDemandes[idx]._montantTotal = montantTotal;
+      allDemandes[idx]._montantAcompte = montantAcompte;
+      allDemandes[idx]._arrivee = arrivee;
+      allDemandes[idx]._depart = depart;
+      allDemandes[idx]._joursFidelite = joursFidelite;
+    }
+    closeModal('modal-acceptation');
+    closeModal('modal-demande');
+    // Email non bloquant
+    envoyerEmailAcceptation({ ...allDemandes.find(x => x.id === id), montant_total: montantTotal, montant_acompte: montantAcompte })
+      .catch(e => console.warn('Email non envoyé:', e));
+    showToast(`✅ Garde acceptée ! Acompte à recevoir : ${montantAcompte} €`, 'success');
+    updateStats(); renderDashboard(); renderDemandes();
+  } catch(e) { showToast('Erreur : ' + e.message, 'error'); console.error(e); }
+}
+
+async function confirmerVirement(id) {
+  const d = allDemandes.find(x => x.id === id);
+  if (!d) return;
+  const joursFidelite = d._joursFidelite || 0;
+  const montantTotal = d._montantTotal || d.montant_total || 0;
+  const montantAcompte = d._montantAcompte || d.montant_acompte || 0;
+  try {
+    await sb(`demandes?id=eq.${id}`, { method: 'PATCH', body: { statut: 'virement_ok', traitee_le: new Date().toISOString() } });
+
+    // Créer la réservation (sans client_id si null)
+    const resaBody = {
+      demande_id: id,
+      service: d.service,
+      date_debut: d.date_debut,
+      date_fin: d.date_fin,
+      nb_chiens: d.nb_chiens || 1,
+      chien_nom: d.chien_nom || '',
+      montant_total: montantTotal,
+      montant_acompte: montantAcompte,
+      acompte_recu: true,
+      acompte_recu_le: new Date().toISOString().split('T')[0],
+      option_randonnee: d.option_randonnee,
+      option_album: d.option_album,
+      option_collier: d.option_collier,
+      statut: 'confirme'
+    };
+    if (d.client_id) resaBody.client_id = d.client_id;
+
+    await sb('reservations', { method: 'POST', body: resaBody });
+
+    // Mise à jour fidélité si client existant
+    if (d.client_id && joursFidelite > 0) {
+      await mettreAJourFidelite(d.client_id, d.chien_nom, joursFidelite);
+    }
+
+    allDemandes = await sb('demandes?order=created_at.desc');
+    allReservations = await sb('reservations?order=date_debut.asc');
+    closeModal('modal-demande');
+    showToast('🎉 Réservation confirmée !', 'success');
+    updateStats(); renderDashboard(); renderDemandes();
+  } catch(e) { showToast('Erreur : ' + e.message, 'error'); console.error(e); }
+}
+
+async function mettreAJourFidelite(clientId, chienNom, joursAjouter) {
+  try {
+    // Chercher la carte de fidélité existante
+    const cartes = await sb(`fidelite?client_id=eq.${clientId}&chien_nom=eq.${encodeURIComponent(chienNom)}`);
+    if (cartes && cartes.length > 0) {
+      const carte = cartes[0];
+      const newTotal = (carte.jours_cumules || 0) + joursAjouter;
+      const joursOfferts = Math.floor(newTotal / 12);
+      await sb(`fidelite?id=eq.${carte.id}`, {
+        method: 'PATCH',
+        body: { jours_cumules: newTotal, jours_offerts_total: joursOfferts, updated_at: new Date().toISOString() }
+      });
+    } else {
+      // Créer la carte
+      const joursOfferts = Math.floor(joursAjouter / 12);
+      await sb('fidelite', {
+        method: 'POST',
+        body: { client_id: clientId, chien_nom: chienNom, jours_cumules: joursAjouter, jours_offerts_total: joursOfferts }
+      });
+    }
+  } catch(e) { console.warn('Fidélité non mise à jour:', e); }
+}
+
+// ═══════════════════════════════════════════════════
+// NOUVELLE DEMANDE MANUELLE
+// ═══════════════════════════════════════════════════
+async function creerDemande() {
+  const body = {
+    prenom_contact: document.getElementById('nd-prenom').value,
+    nom_contact: document.getElementById('nd-nom').value,
+    email_contact: document.getElementById('nd-email').value,
+    telephone_contact: document.getElementById('nd-tel').value,
+    chien_nom: document.getElementById('nd-chien').value,
+    chien_race: document.getElementById('nd-race').value,
+    service: document.getElementById('nd-service').value,
+    nb_chiens: parseInt(document.getElementById('nd-nb').value) || 1,
+    date_debut: document.getElementById('nd-debut').value || null,
+    date_fin: document.getElementById('nd-fin').value || null,
+    message: document.getElementById('nd-message').value,
+    statut: 'en_attente'
+  };
+  if (!body.prenom_contact || !body.email_contact) { showToast('Prénom et email obligatoires', 'error'); return; }
+  try {
+    await sb('demandes', { method: 'POST', body });
+    allDemandes = await sb('demandes?order=created_at.desc');
+    closeModal('modal-nouvelle-demande');
+    showToast('✅ Demande enregistrée !', 'success');
+    updateStats(); renderDashboard(); renderDemandes();
+  } catch(e) { showToast('Erreur : ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════
+// PLANNING
+// ═══════════════════════════════════════════════════
+function renderPlanning() {
+  const today = new Date();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7) + weekOffset * 7);
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    days.push(d);
+  }
+  const todayStr = today.toISOString().split('T')[0];
+  const jours = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+  document.getElementById('week-label').textContent =
+    `Semaine du ${monday.getDate()} ${monday.toLocaleDateString('fr-FR', {month:'long'})}`;
+
+  // Header
+  let head = '<tr><th style="width:80px;background:#1a3a0a">Service</th>';
+  days.forEach((d, i) => {
+    const ds = d.toISOString().split('T')[0];
+    const isToday = ds === todayStr;
+    head += `<th class="${isToday ? 'today-col' : ''}">${jours[i]}<br>${d.getDate()}/${d.getMonth()+1}</th>`;
+  });
+  head += '</tr>';
+  document.getElementById('planning-head').innerHTML = head;
+
+  // Corps - Pension
+  let bodyHTML = '<tr><td class="row-label">🏡 Pension</td>';
+  days.forEach(d => {
+    const ds = d.toISOString().split('T')[0];
+    const isToday = ds === todayStr;
+    const resas = allReservations.filter(r =>
+      r.service === 'pension' && r.statut !== 'annule' &&
+      r.date_debut <= ds && (r.date_fin === null || r.date_fin >= ds)
+    );
+    const nb = resas.reduce((s, r) => s + (r.nb_chiens || 1), 0);
+    const pct = Math.min(100, nb / 4 * 100);
+    const capColor = nb === 0 ? '#D1FAE5' : nb <= 2 ? '#86EFAC' : nb === 3 ? '#FCD34D' : '#FCA5A5';
+    bodyHTML += `<td class="${isToday ? 'today-col' : ''}">
+      ${resas.map(r => `<span class="dog-pill" title="${r.chien_nom || ''}">${r.chien_nom || 'Chien'}${(r.nb_chiens||1) > 1 ? ' ×'+r.nb_chiens : ''}</span>`).join('')}
+      <div class="cap-bar"><div class="cap-fill" style="width:${pct}%;background:${capColor};"></div></div>
+      <div style="font-size:0.65rem;color:var(--gris);margin-top:2px;">${nb}/4</div>
+    </td>`;
+  });
+  bodyHTML += '</tr>';
+
+  // Corps - Randonnée (jeudi)
+  bodyHTML += '<tr><td class="row-label">🏔️ Rando</td>';
+  days.forEach((d, i) => {
+    const ds = d.toISOString().split('T')[0];
+    const isJeudi = d.getDay() === 4;
+    const isToday = ds === todayStr;
+    if (isJeudi) {
+      const resas = allReservations.filter(r => r.service === 'randonnee' && r.statut !== 'annule' && r.date_debut === ds);
+      bodyHTML += `<td class="${isToday ? 'today-col' : ''}">
+        ${resas.map(r => `<span class="dog-pill rando">${r.chien_nom || 'Chien'}</span>`).join('')}
+        <div style="font-size:0.65rem;color:var(--gris);margin-top:2px;">${resas.length}/5</div>
+      </td>`;
+    } else {
+      bodyHTML += `<td style="background:#FAFAFA;"></td>`;
+    }
+  });
+  bodyHTML += '</tr>';
+
+  document.getElementById('planning-body').innerHTML = bodyHTML;
+}
+
+function changeWeek(dir, reset = false) {
+  weekOffset = reset ? 0 : weekOffset + dir;
+  renderPlanning();
+}
+
+// ═══════════════════════════════════════════════════
+// CLIENTS
+// ═══════════════════════════════════════════════════
+function renderClients() {
+  const div = document.getElementById('table-clients');
+  if (!allClients.length) {
+    div.innerHTML = `<div class="empty-state"><div class="es-icon">👤</div>Aucun client enregistré</div>`;
+    return;
+  }
+  div.innerHTML = `<table>
+    <thead><tr><th>Nom</th><th>Email</th><th>Téléphone</th><th>Ville</th><th>Statut</th><th>Actions</th></tr></thead>
+    <tbody>${allClients.map(c => `<tr>
+      <td class="fw-600">${c.prenom} ${c.nom}</td>
+      <td class="text-muted">${c.email}</td>
+      <td class="text-muted">${c.telephone || '—'}</td>
+      <td class="text-muted">${c.ville || '—'}</td>
+      <td><span class="badge badge-${c.statut}">${labelStatutClient(c.statut)}</span></td>
+      <td><button class="btn btn-blue" onclick="ouvrirClient('${c.id}')">Voir</button></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+async function ouvrirClient(id) {
+  const c = allClients.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('mc-nom').textContent = `${c.prenom} ${c.nom}`;
+  document.getElementById('mc-sub').textContent = `Client depuis ${formatDate(c.created_at)}`;
+  document.getElementById('mc-infos').innerHTML = `
+    <div class="info-row"><span class="ir-label">Email</span><span class="ir-value">${c.email}</span></div>
+    <div class="info-row"><span class="ir-label">Téléphone</span><span class="ir-value">${c.telephone || '—'}</span></div>
+    <div class="info-row"><span class="ir-label">Ville</span><span class="ir-value">${c.ville || '—'}</span></div>
+    <div class="info-row"><span class="ir-label">Statut</span><span class="ir-value"><span class="badge badge-${c.statut}">${labelStatutClient(c.statut)}</span></span></div>
+    ${c.notes_internes ? `<div class="info-row"><span class="ir-label">Notes</span><span class="ir-value">${c.notes_internes}</span></div>` : ''}
+  `;
+  const btn = document.getElementById('mc-valider-btn');
+  if (c.statut === 'valide') {
+    btn.textContent = '✓ Compte validé';
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+  } else {
+    btn.textContent = 'Valider le compte';
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.onclick = async () => {
+      await sb(`clients?id=eq.${id}`, { method: 'PATCH', body: { statut: 'valide' } });
+      allClients = await sb('clients?order=created_at.desc');
+      closeModal('modal-client');
+      showToast('✅ Compte client validé !', 'success');
+      renderClients();
+    };
+  }
+  openModal('modal-client');
+}
+
+// ═══════════════════════════════════════════════════
+// DISPONIBILITÉS
+// ═══════════════════════════════════════════════════
+function renderDispoCalendar() {
+  const months = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  document.getElementById('dispo-month-label').textContent = `${months[dispoMonth]} ${dispoYear}`;
+
+  const grid = document.getElementById('dispo-calendar-grid');
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  const firstDay = new Date(dispoYear, dispoMonth, 1).getDay();
+  const daysInMonth = new Date(dispoYear, dispoMonth + 1, 0).getDate();
+  const offset = (firstDay + 6) % 7;
+
+  // Supprimer les jours précédents (garder les 7 headers)
+  while (grid.children.length > 7) grid.removeChild(grid.lastChild);
+
+  // Cases vides pour le décalage
+  for (let i = 0; i < offset; i++) {
+    const el = document.createElement('div');
+    el.className = 'dispo-day empty';
+    grid.appendChild(el);
+  }
+
+  // Jours du mois
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${dispoYear}-${String(dispoMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isPast = ds < todayStr;
+    const isToday = ds === todayStr;
+    const isBloque = allDispos.some(x => x.date_debut <= ds && x.date_fin >= ds);
+    const nbResas = allReservations.filter(r =>
+      r.statut !== 'annule' && r.date_debut <= ds && (r.date_fin === null || r.date_fin >= ds)
+    ).reduce((s, r) => s + (r.nb_chiens || 1), 0);
+    const isComplet = nbResas >= 4;
+    const isReserve = nbResas > 0 && nbResas < 4;
+
+    let cls = 'dispo-day';
+    if (isPast) cls += ' past';
+    else if (isBloque) cls += ' bloque';
+    else if (isComplet) cls += ' complet';
+    else if (isReserve) cls += ' reserve';
+    else cls += ' dispo';
+    if (isToday) cls += ' today';
+
+    const el = document.createElement('div');
+    el.className = cls;
+    el.textContent = d;
+    el.title = `${ds}${nbResas ? ' · ' + nbResas + ' chien(s)' : ''}`;
+    if (!isPast) el.onclick = () => toggleDispo(ds);
+    grid.appendChild(el);
+  }
+
+  // Liste des périodes bloquées
+  const bloqs = allDispos.filter(x => x.date_fin >= todayStr);
+  const divB = document.getElementById('dispo-bloquees');
+  if (!bloqs.length) {
+    divB.innerHTML = '<div class="empty-state" style="padding:0.75rem;">Aucune période bloquée</div>';
+  } else {
+    divB.innerHTML = bloqs.map(b => `
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid var(--gris-border); font-size:0.82rem;">
+        <div>
+          <div class="fw-600">${formatDate(b.date_debut)} → ${formatDate(b.date_fin)}</div>
+          <div class="text-muted">${b.raison || 'Bloqué'}</div>
+        </div>
+        <button class="btn btn-gray" style="font-size:0.7rem; padding:3px 8px;" onclick="debloquer('${b.id}')">✕</button>
+      </div>`).join('');
+  }
+}
+
+async function toggleDispo(ds) {
+  const isBloque = allDispos.some(x => x.date_debut <= ds && x.date_fin >= ds);
+  if (isBloque) {
+    const bloc = allDispos.find(x => x.date_debut <= ds && x.date_fin >= ds);
+    await debloquer(bloc.id);
+  } else {
+    await sb('disponibilites', { method: 'POST', body: { date_debut: ds, date_fin: ds, type: 'bloque', raison: 'Bloqué' } });
+    allDispos = await sb('disponibilites?order=date_debut.asc');
+    showToast('Date bloquée', 'success');
+    renderDispoCalendar();
+  }
+}
+
+async function debloquer(id) {
+  await sb(`disponibilites?id=eq.${id}`, { method: 'DELETE', prefer: 'return=minimal' });
+  allDispos = await sb('disponibilites?order=date_debut.asc');
+  showToast('Période débloquée', 'success');
+  renderDispoCalendar();
+}
+
+async function bloquerPeriode() {
+  const debut = document.getElementById('bloc-debut').value;
+  const fin = document.getElementById('bloc-fin').value;
+  const raison = document.getElementById('bloc-raison').value;
+  if (!debut || !fin) { showToast('Dates obligatoires', 'error'); return; }
+  try {
+    await sb('disponibilites', { method: 'POST', body: { date_debut: debut, date_fin: fin, type: 'bloque', raison: raison || 'Bloqué' } });
+    allDispos = await sb('disponibilites?order=date_debut.asc');
+    closeModal('modal-bloquer');
+    showToast('✅ Période bloquée !', 'success');
+    renderDispoCalendar();
+  } catch(e) { showToast('Erreur', 'error'); }
+}
+
+function changeDispoMonth(dir) {
+  dispoMonth += dir;
+  if (dispoMonth > 11) { dispoMonth = 0; dispoYear++; }
+  if (dispoMonth < 0) { dispoMonth = 11; dispoYear--; }
+  renderDispoCalendar();
+}
+
+// ═══════════════════════════════════════════════════
+// UTILITAIRES
+// ═══════════════════════════════════════════════════
+function formatDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: dt.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined });
+}
+
+function labelService(s) {
+  return { pension: 'Pension', randonnee: 'Randonnée', visite: 'Visite', balade: 'Balade' }[s] || s;
+}
+
+function labelStatut(s) {
+  return { en_attente: 'En attente', rencontre: 'Rencontre', test: 'Test', acceptee: 'Acceptée', virement_ok: 'Confirmée', refusee: 'Refusée', annulee: 'Annulée' }[s] || s;
+}
+
+function labelStatutClient(s) {
+  return { nouveau: 'Nouveau', rencontre: 'Rencontre', test: 'Test', valide: 'Validé', refuse: 'Refusé' }[s] || s;
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o => o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); }));
+
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (type ? ' ' + type : '');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ═══════════════════════════════════════════════════
+// FIDÉLITÉ
+// ═══════════════════════════════════════════════════
+async function loadFidelite() {
+  const div = document.getElementById('table-fidelite');
+  div.innerHTML = '<div class="loading"><div class="spinner"></div><br>Chargement…</div>';
+  try {
+    const cartes = await sb('fidelite?select=*,clients(prenom,nom,email,telephone)&order=chien_nom.asc');
+    if (!cartes || !cartes.length) {
+      div.innerHTML = `<div class="empty-state"><div class="es-icon">🎁</div>Aucune carte de fidélité encore créée.<br><span style="font-size:0.8rem;margin-top:0.5rem;display:block;">Elles sont créées automatiquement à la confirmation des réservations.</span></div>`;
+      return;
+    }
+    div.innerHTML = `<table>
+      <thead><tr>
+        <th>Chien</th><th>Propriétaire</th><th>Jours cumulés</th>
+        <th>Cycle actuel</th><th>Prochain jour offert</th><th>Jours offerts dispo</th><th>Actions</th>
+      </tr></thead>
+      <tbody>${cartes.map(c => {
+        const cycleActuel = c.jours_cumules % 12;
+        const avantProchain = 12 - cycleActuel;
+        const dispo = (c.jours_offerts_total || 0) - (c.jours_offerts_utilises || 0);
+        const pct = Math.round(cycleActuel / 12 * 100);
+        return `<tr>
+          <td class="fw-600">🐾 ${c.chien_nom}</td>
+          <td>
+            ${c.clients ? c.clients.prenom + ' ' + c.clients.nom : '—'}<br>
+            <span class="text-muted">${c.clients?.email || ''}</span>
+          </td>
+          <td>
+            <span class="fw-600">${c.jours_cumules}</span> j
+            <div style="height:6px;background:var(--gris-border);border-radius:3px;margin-top:4px;width:80px;">
+              <div style="height:100%;width:${pct}%;background:var(--foret);border-radius:3px;"></div>
+            </div>
+          </td>
+          <td><span style="font-size:1rem;font-weight:700;color:var(--foret);">${cycleActuel}</span><span style="color:var(--gris);font-size:0.82rem;">/12</span></td>
+          <td style="color:var(--terre);font-weight:600;">encore ${avantProchain} j</td>
+          <td>
+            ${dispo > 0
+              ? `<span style="background:var(--success-light);color:var(--success);font-weight:700;padding:4px 10px;border-radius:20px;font-size:0.82rem;">🎁 ${dispo} jour${dispo > 1 ? 's' : ''} offert${dispo > 1 ? 's' : ''}</span>`
+              : `<span style="color:var(--gris);font-size:0.82rem;">—</span>`}
+          </td>
+          <td>
+            ${dispo > 0 ? `<button class="btn btn-or" onclick="utiliserJourOffert('${c.id}', '${c.chien_nom}')">Utiliser 1 jour</button>` : ''}
+          </td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+  } catch(e) {
+    div.innerHTML = `<div class="empty-state">Erreur de chargement · La table fidélité n'existe peut-être pas encore — exécute le SQL de mise à jour.</div>`;
+  }
+}
+
+async function utiliserJourOffert(carteId, chienNom) {
+  if (!confirm(`Utiliser 1 jour offert pour ${chienNom} ?`)) return;
+  try {
+    const cartes = await sb(`fidelite?id=eq.${carteId}`);
+    if (!cartes?.length) return;
+    const carte = cartes[0];
+    await sb(`fidelite?id=eq.${carteId}`, {
+      method: 'PATCH',
+      body: { jours_offerts_utilises: (carte.jours_offerts_utilises || 0) + 1, updated_at: new Date().toISOString() }
+    });
+    showToast(`🎁 1 jour offert utilisé pour ${chienNom}`, 'success');
+    loadFidelite();
+  } catch(e) { showToast('Erreur', 'error'); }
+}
+
+// ═══════════════════════════════════════════════════
+// MOT DE PASSE ADMIN
+// ═══════════════════════════════════════════════════
+const MOT_DE_PASSE = 'toutous2025'; // ← change ce mot de passe !
+
+function verifierMdp() {
+  const saisi = document.getElementById('login-pwd').value;
+  if (saisi === MOT_DE_PASSE) {
+    document.getElementById('login-screen').style.display = 'none';
+    sessionStorage.setItem('admin_ok', '1');
+    demarrerAdmin();
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+    document.getElementById('login-pwd').value = '';
+    document.getElementById('login-pwd').focus();
+  }
+}
+
+function demarrerAdmin() {
+  const now = new Date();
+  dispoMonth = now.getMonth();
+  dispoYear = now.getFullYear();
+  document.getElementById('today-label').textContent = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  loadAll();
+}
+
+// ═══════════════════════════════════════════════════
+// EMAILJS FONCTIONS
+// ═══════════════════════════════════════════════════
+
+async function envoyerEmailAcceptation(demande) {
+  try {
+    await emailjs.send('service_r8y448c', 'garde_acceptee', {
+      email: demande.email_contact || '',
+      prenom: demande.prenom_contact || '',
+      chien_nom: demande.chien_nom || '',
+      date_debut: formatDate(demande.date_debut),
+      date_fin: formatDate(demande.date_fin),
+      montant_total: demande.montant_total || '',
+      montant_acompte: demande.montant_acompte || '',
+    });
+    console.log('Email acceptation envoyé');
+  } catch(e) {
+    console.warn('Email non envoyé :', e);
+    showToast('⚠️ Réservation confirmée mais email non envoyé', 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+const now = new Date();
+dispoMonth = now.getMonth();
+dispoYear = now.getFullYear();
+
+// Vérifier si déjà authentifié dans cette session
+if (sessionStorage.getItem('admin_ok') === '1') {
+  document.getElementById('login-screen').style.display = 'none';
+  demarrerAdmin();
+} else {
+  document.getElementById('login-pwd').focus();
+}
+</script>
+</body>
+</html>

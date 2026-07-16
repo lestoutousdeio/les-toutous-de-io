@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Les Toutous de Io · Pension canine familiale</title>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --foret: #2D5016;
+    --foret-light: #3d6b1e;
+    --terre: #8B6340;
+    --or: #D4A853;
+    --or-light: #f0d08a;
+    --creme: #FAF7F2;
+    --blanc: #ffffff;
+    --gris: #6B7280;
+    --gris-light: #F3F0EB;
+    --texte: #1C1A17;
+    --danger: #C0392B;
+    --success: #27AE60;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: var(--creme); color: var(--texte); overflow-x: hidden; }
+
+  /* NAV */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(250,247,242,0.96); backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(212,168,83,0.2);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2rem; height: 64px;
+  }
+  .nav-brand {
+    display: flex; align-items: center; gap: 10px;
+    font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--foret); font-weight: 700; text-decoration: none;
+  }
+  .nav-brand .paw { font-size: 1.4rem; }
+  .nav-links { display: flex; gap: 2rem; align-items: center; }
+  .nav-links a {
+    text-decoration: none; color: var(--texte); font-size: 0.875rem; font-weight: 500;
+    cursor: pointer; transition: color 0.2s; padding: 4px 0; border-bottom: 2px solid transparent;
+  }
+  .nav-links a:hover, .nav-links a.active { color: var(--foret); border-bottom-color: var(--or); }
+  .nav-cta {
+    background: var(--foret); color: white !important; border-radius: 6px;
+    padding: 8px 18px !important; border-bottom: none !important;
+    transition: background 0.2s !important;
+  }
+  .nav-cta:hover { background: var(--foret-light) !important; }
+
+  /* PAGES */
+  .page { display: none; padding-top: 64px; min-height: 100vh; }
+  .page.active { display: block; }
+
+  /* === HOME PAGE === */
+  .hero {
+    background: linear-gradient(160deg, var(--foret) 0%, #1a3a0a 100%);
+    padding: 6rem 2rem 4rem;
+    text-align: center; position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-block; background: rgba(212,168,83,0.2); border: 1px solid rgba(212,168,83,0.4);
+    color: var(--or-light); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; padding: 6px 16px; border-radius: 20px; margin-bottom: 1.5rem;
+  }
+  .hero h1 {
+    font-family: 'Playfair Display', serif; font-size: clamp(2.2rem, 5vw, 3.5rem);
+    color: white; line-height: 1.15; margin-bottom: 1rem;
+  }
+  .hero h1 em { font-style: italic; color: var(--or-light); }
+  .hero p { color: rgba(255,255,255,0.75); font-size: 1.05rem; max-width: 520px; margin: 0 auto 2rem; line-height: 1.7; }
+  .hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+  .btn-primary {
+    background: var(--or); color: var(--texte); font-weight: 600; font-size: 0.9rem;
+    padding: 12px 28px; border-radius: 8px; border: none; cursor: pointer;
+    transition: all 0.2s; text-decoration: none; display: inline-block;
+  }
+  .btn-primary:hover { background: #c4943d; transform: translateY(-1px); }
+  .btn-outline {
+    background: transparent; color: white; font-weight: 500; font-size: 0.9rem;
+    padding: 12px 28px; border-radius: 8px; border: 1.5px solid rgba(255,255,255,0.4);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-outline:hover { border-color: white; background: rgba(255,255,255,0.08); }
+  .hero-stats {
+    display: flex; gap: 3rem; justify-content: center; margin-top: 3rem;
+    padding-top: 2.5rem; border-top: 1px solid rgba(255,255,255,0.1);
+    flex-wrap: wrap;
+  }
+  .stat { text-align: center; }
+  .stat-num { font-family: 'Playfair Display', serif; font-size: 2rem; color: var(--or-light); font-weight: 700; }
+  .stat-label { font-size: 0.78rem; color: rgba(255,255,255,0.55); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* DIVIDER PAW */
+  .paw-divider { text-align: center; padding: 2rem 0; font-size: 1.5rem; opacity: 0.4; }
+
+  /* SECTIONS */
+  .section { padding: 4rem 2rem; max-width: 1100px; margin: 0 auto; }
+  .section-title { font-family: 'Playfair Display', serif; font-size: 1.9rem; color: var(--foret); margin-bottom: 0.5rem; }
+  .section-sub { color: var(--gris); font-size: 0.95rem; margin-bottom: 2.5rem; line-height: 1.6; }
+
+  /* CARDS */
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+  .card {
+    background: white; border-radius: 12px; padding: 1.75rem;
+    border: 1px solid rgba(0,0,0,0.06); transition: box-shadow 0.2s;
+  }
+  .card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+  .card-icon { font-size: 2rem; margin-bottom: 1rem; }
+  .card h3 { font-family: 'Playfair Display', serif; font-size: 1.15rem; color: var(--foret); margin-bottom: 0.5rem; }
+  .card p { font-size: 0.875rem; color: var(--gris); line-height: 1.6; }
+  .card-price { margin-top: 1rem; font-weight: 600; color: var(--terre); font-size: 1rem; }
+
+  /* PROCESS */
+  .process-steps { display: flex; flex-direction: column; gap: 1rem; }
+  .process-step {
+    display: flex; align-items: flex-start; gap: 1rem;
+    background: white; border-radius: 10px; padding: 1.25rem 1.5rem;
+    border-left: 4px solid var(--or);
+  }
+  .step-num {
+    background: var(--foret); color: white; border-radius: 50%;
+    width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; font-weight: 700; flex-shrink: 0;
+  }
+  .step-content h4 { font-weight: 600; color: var(--texte); margin-bottom: 0.25rem; font-size: 0.95rem; }
+  .step-content p { font-size: 0.85rem; color: var(--gris); line-height: 1.5; }
+
+  /* CONDITIONS */
+  .conditions-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+  .condition-item {
+    background: white; border-radius: 8px; padding: 1rem 1.25rem;
+    display: flex; align-items: center; gap: 0.75rem;
+    border: 1px solid rgba(0,0,0,0.05);
+    font-size: 0.875rem; font-weight: 500;
+  }
+  .condition-item .check { color: var(--success); font-size: 1.1rem; }
+
+  /* TEAM */
+  .team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; }
+  .team-card {
+    background: white; border-radius: 12px; padding: 2rem;
+    text-align: center; border: 1px solid rgba(0,0,0,0.06);
+  }
+  .team-avatar {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--foret), var(--foret-light));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; margin: 0 auto 1rem;
+  }
+  .team-card h3 { font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--texte); margin-bottom: 0.25rem; }
+  .team-card .role { font-size: 0.8rem; color: var(--or); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-bottom: 0.75rem; }
+  .team-card p { font-size: 0.85rem; color: var(--gris); line-height: 1.5; }
+  .badge-acaced {
+    display: inline-block; background: var(--gris-light); color: var(--foret);
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 10px; border-radius: 20px; margin-top: 0.75rem;
+  }
+
+  /* === SERVICES PAGE === */
+  .services-hero {
+    background: linear-gradient(120deg, var(--terre) 0%, #6b4a2a 100%);
+    padding: 3.5rem 2rem 2.5rem; text-align: center;
+  }
+  .services-hero h1 { font-family: 'Playfair Display', serif; color: white; font-size: 2.2rem; margin-bottom: 0.5rem; }
+  .services-hero p { color: rgba(255,255,255,0.75); font-size: 0.95rem; }
+
+  .service-block {
+    background: white; border-radius: 16px; padding: 2rem; margin-bottom: 1.5rem;
+    border: 1px solid rgba(0,0,0,0.06);
+  }
+  .service-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+  .service-header h2 { font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--foret); }
+  .service-tag {
+    background: var(--gris-light); color: var(--terre); font-size: 0.72rem;
+    font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+    padding: 4px 12px; border-radius: 20px;
+  }
+  .service-desc { font-size: 0.9rem; color: var(--gris); line-height: 1.65; margin-bottom: 1.25rem; }
+  .pricing-table { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .price-item {
+    background: var(--gris-light); border-radius: 8px; padding: 0.75rem 1.25rem;
+    text-align: center; flex: 1; min-width: 120px;
+  }
+  .price-item .amount { font-size: 1.3rem; font-weight: 700; color: var(--foret); }
+  .price-item .label { font-size: 0.75rem; color: var(--gris); margin-top: 2px; }
+  .zone-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+  @media (max-width: 500px) { .zone-grid { grid-template-columns: 1fr 1fr; } }
+
+  /* UPSELL */
+  .upsell-tip {
+    background: linear-gradient(135deg, rgba(212,168,83,0.12), rgba(212,168,83,0.04));
+    border: 1px solid rgba(212,168,83,0.3); border-radius: 10px;
+    padding: 1rem 1.25rem; display: flex; align-items: flex-start; gap: 0.75rem;
+    margin-top: 1rem; font-size: 0.83rem; color: #7a5a1a;
+  }
+  .upsell-tip .icon { font-size: 1.2rem; flex-shrink: 0; }
+
+  /* ADD-ONS */
+  .addons-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+  .addon-card {
+    background: white; border: 2px solid var(--gris-light); border-radius: 12px;
+    padding: 1.5rem; text-align: center; cursor: pointer; transition: all 0.2s;
+  }
+  .addon-card:hover { border-color: var(--or); }
+  .addon-card .addon-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+  .addon-card h4 { font-size: 0.9rem; font-weight: 600; color: var(--texte); margin-bottom: 0.25rem; }
+  .addon-card p { font-size: 0.78rem; color: var(--gris); line-height: 1.4; }
+  .addon-card .addon-price { margin-top: 0.75rem; font-weight: 700; color: var(--foret); font-size: 0.95rem; }
+
+  /* === BOOKING PAGE === */
+  .booking-layout { display: grid; grid-template-columns: 1fr 360px; gap: 2rem; max-width: 1100px; margin: 0 auto; padding: 2rem; }
+  @media (max-width: 900px) { .booking-layout { grid-template-columns: 1fr; } }
+
+  .booking-form-area h2 { font-family: 'Playfair Display', serif; font-size: 1.6rem; color: var(--foret); margin-bottom: 0.5rem; }
+  .booking-form-area .subtitle { color: var(--gris); font-size: 0.875rem; margin-bottom: 2rem; }
+
+  .form-section { margin-bottom: 2rem; }
+  .form-section-title { font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--terre); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--gris-light); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+  .form-group { margin-bottom: 1rem; }
+  .form-group label { display: block; font-size: 0.82rem; font-weight: 500; color: var(--texte); margin-bottom: 0.4rem; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; border: 1.5px solid #E5E0D8; border-radius: 8px; padding: 0.65rem 0.9rem;
+    font-size: 0.9rem; font-family: 'Inter', sans-serif; background: white; color: var(--texte);
+    transition: border-color 0.2s; outline: none;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--foret); }
+  .form-group textarea { resize: vertical; min-height: 80px; }
+
+  /* SERVICE SELECTOR */
+  .service-selector { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+  .service-option {
+    border: 2px solid #E5E0D8; border-radius: 10px; padding: 1rem;
+    cursor: pointer; transition: all 0.2s; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+  }
+  .service-option.selected { border-color: var(--foret); background: rgba(45,80,22,0.04); }
+  .service-option .s-icon { font-size: 1.5rem; }
+  .service-option .s-name { font-size: 0.82rem; font-weight: 600; color: var(--texte); }
+  .service-option .s-price { font-size: 0.75rem; color: var(--gris); }
+
+  /* CALENDAR SIMPLE */
+  .mini-calendar { background: white; border-radius: 12px; border: 1px solid #E5E0D8; overflow: hidden; }
+  .cal-header { background: var(--foret); color: white; padding: 1rem; display: flex; align-items: center; justify-content: space-between; }
+  .cal-header h3 { font-size: 0.95rem; font-weight: 600; }
+  .cal-nav { background: none; border: none; color: white; cursor: pointer; font-size: 1.2rem; padding: 0 4px; }
+  .cal-grid { padding: 0.75rem; }
+  .cal-days-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 4px; }
+  .cal-day-name { text-align: center; font-size: 0.7rem; font-weight: 600; color: var(--gris); padding: 4px 0; }
+  .cal-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .cal-day {
+    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    border-radius: 6px; font-size: 0.8rem; cursor: pointer; transition: all 0.15s;
+  }
+  .cal-day:hover:not(.empty):not(.full) { background: var(--gris-light); }
+  .cal-day.empty { cursor: default; }
+  .cal-day.today { font-weight: 700; color: var(--foret); }
+  .cal-day.selected { background: var(--foret); color: white; font-weight: 600; }
+  .cal-day.full { background: #fee2e2; color: #dc2626; text-decoration: line-through; cursor: not-allowed; font-size: 0.72rem; }
+  .cal-day.partial { background: #fef9c3; color: #92400e; }
+  .cal-legend { display: flex; gap: 1rem; padding: 0.75rem; border-top: 1px solid #E5E0D8; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.72rem; color: var(--gris); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+  /* SMART UPSELL IN BOOKING */
+  .booking-upsells { background: linear-gradient(135deg, #fef9ef, #fdf6e7); border-radius: 12px; padding: 1.25rem; margin-top: 1.5rem; border: 1px solid rgba(212,168,83,0.25); }
+  .booking-upsells h4 { font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--terre); margin-bottom: 1rem; }
+  .upsell-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.75rem; background: white; border-radius: 8px; margin-bottom: 0.5rem;
+    border: 1.5px solid transparent; cursor: pointer; transition: all 0.2s;
+  }
+  .upsell-item:hover { border-color: var(--or); }
+  .upsell-item.added { border-color: var(--success); background: rgba(39,174,96,0.04); }
+  .upsell-left { display: flex; align-items: center; gap: 0.75rem; }
+  .upsell-left .u-icon { font-size: 1.4rem; }
+  .upsell-left .u-name { font-size: 0.85rem; font-weight: 600; color: var(--texte); }
+  .upsell-left .u-reason { font-size: 0.73rem; color: var(--gris); margin-top: 1px; }
+  .upsell-right { display: flex; align-items: center; gap: 0.5rem; }
+  .upsell-price { font-size: 0.85rem; font-weight: 700; color: var(--foret); }
+  .add-btn {
+    background: var(--foret); color: white; border: none; border-radius: 6px;
+    padding: 5px 12px; font-size: 0.78rem; cursor: pointer; white-space: nowrap;
+  }
+  .add-btn.added-btn { background: var(--success); }
+
+  /* ORDER SUMMARY */
+  .order-summary {
+    background: white; border-radius: 16px; padding: 1.5rem;
+    border: 1px solid rgba(0,0,0,0.06); position: sticky; top: 80px;
+    align-self: start;
+  }
+  .summary-title { font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--texte); margin-bottom: 1.25rem; }
+  .summary-line { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; }
+  .summary-line .sl-label { font-size: 0.85rem; color: var(--gris); }
+  .summary-line .sl-value { font-size: 0.85rem; font-weight: 600; color: var(--texte); }
+  .summary-divider { border: none; border-top: 1px solid var(--gris-light); margin: 1rem 0; }
+  .summary-total { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+  .summary-total .t-label { font-weight: 700; color: var(--texte); }
+  .summary-total .t-amount { font-size: 1.4rem; font-weight: 700; color: var(--foret); }
+  .deposit-note { background: var(--gris-light); border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.78rem; color: var(--gris); margin-bottom: 1.25rem; line-height: 1.5; }
+  .btn-book {
+    width: 100%; background: var(--foret); color: white; border: none;
+    border-radius: 10px; padding: 1rem; font-size: 0.95rem; font-weight: 600;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .btn-book:hover { background: var(--foret-light); }
+  .book-note { text-align: center; font-size: 0.73rem; color: var(--gris); margin-top: 0.75rem; line-height: 1.4; }
+
+  /* PROCESS STEPS BOOKING */
+  .process-info { background: var(--gris-light); border-radius: 10px; padding: 1.25rem; margin-top: 1.5rem; }
+  .process-info h4 { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gris); margin-bottom: 0.75rem; }
+  .pi-step { display: flex; align-items: flex-start; gap: 0.6rem; margin-bottom: 0.5rem; font-size: 0.8rem; color: var(--gris); line-height: 1.4; }
+  .pi-step .pi-dot { color: var(--or); flex-shrink: 0; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 2rem; right: 2rem; background: var(--foret);
+    color: white; padding: 0.9rem 1.5rem; border-radius: 10px; font-size: 0.875rem;
+    font-weight: 500; z-index: 200; transform: translateY(100px); opacity: 0;
+    transition: all 0.3s; max-width: 300px; box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    z-index: 150; align-items: center; justify-content: center; padding: 1rem;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: white; border-radius: 16px; padding: 2rem; max-width: 480px; width: 100%;
+    max-height: 90vh; overflow-y: auto;
+  }
+  .modal h2 { font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--foret); margin-bottom: 0.5rem; }
+  .modal p { font-size: 0.875rem; color: var(--gris); margin-bottom: 1.5rem; line-height: 1.5; }
+  .modal-actions { display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem; }
+  .btn-secondary {
+    background: var(--gris-light); color: var(--texte); border: none; border-radius: 8px;
+    padding: 0.65rem 1.25rem; font-size: 0.875rem; cursor: pointer; font-weight: 500;
+  }
+
+  /* PLANNING PAGE (admin) */
+  .planning-header {
+    background: white; border-bottom: 1px solid var(--gris-light);
+    padding: 1.5rem 2rem; display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 1rem;
+  }
+  .planning-header h1 { font-family: 'Playfair Display', serif; font-size: 1.5rem; color: var(--foret); }
+  .week-nav { display: flex; align-items: center; gap: 1rem; }
+  .week-btn { background: var(--gris-light); border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 1rem; }
+  .week-label { font-weight: 600; font-size: 0.9rem; }
+  .planning-grid { padding: 2rem; overflow-x: auto; }
+  .week-grid { display: grid; grid-template-columns: 80px repeat(7, 1fr); gap: 1px; background: var(--gris-light); border-radius: 12px; overflow: hidden; min-width: 700px; }
+  .wg-header { background: var(--foret); color: white; padding: 0.75rem 0.5rem; text-align: center; font-size: 0.78rem; font-weight: 600; }
+  .wg-time { background: #F9F9F9; padding: 0.5rem; font-size: 0.72rem; color: var(--gris); display: flex; align-items: center; justify-content: center; }
+  .wg-cell { background: white; min-height: 80px; padding: 0.4rem; position: relative; }
+  .wg-cell.full-day { background: #FFF8F0; }
+  .dog-chip {
+    background: var(--foret); color: white; border-radius: 6px; padding: 4px 8px;
+    font-size: 0.7rem; font-weight: 500; margin-bottom: 3px; display: block;
+  }
+  .dog-chip.pending { background: var(--or); color: var(--texte); }
+  .capacity-bar { height: 4px; border-radius: 2px; background: #eee; margin-top: 4px; overflow: hidden; }
+  .capacity-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+  .cap-1 { background: var(--success); width: 25%; }
+  .cap-2 { background: #A3D977; width: 50%; }
+  .cap-3 { background: var(--or); width: 75%; }
+  .cap-4 { background: var(--danger); width: 100%; }
+
+  /* FOOTER */
+  footer {
+    background: var(--texte); color: rgba(255,255,255,0.65);
+    padding: 3rem 2rem; margin-top: 4rem; text-align: center;
+  }
+  footer .footer-brand { font-family: 'Playfair Display', serif; font-size: 1.3rem; color: white; margin-bottom: 0.5rem; }
+  footer p { font-size: 0.82rem; line-height: 1.6; }
+  footer .footer-links { display: flex; gap: 2rem; justify-content: center; margin: 1.5rem 0; flex-wrap: wrap; }
+  footer .footer-links a { color: rgba(255,255,255,0.55); text-decoration: none; font-size: 0.82rem; cursor: pointer; }
+  footer .footer-links a:hover { color: var(--or-light); }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .nav-links { display: none; }
+    .hero { padding: 4rem 1.25rem 3rem; }
+    .section { padding: 2.5rem 1.25rem; }
+    .service-selector { grid-template-columns: repeat(2, 1fr); }
+    .booking-layout { padding: 1.25rem; }
+    .booking-upsells, .order-summary { border-radius: 10px; }
+  }
+
+  .info-box {
+    background: #EFF8EA; border: 1px solid #B7DCA5; border-radius: 10px;
+    padding: 1rem 1.25rem; font-size: 0.82rem; color: #2D6A18; line-height: 1.6; margin-bottom: 1rem;
+    display: flex; align-items: flex-start; gap: 0.6rem;
+  }
+  .info-box .ib-icon { flex-shrink: 0; }
+  .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--gris-light); margin-bottom: 2rem; }
+  .tab { padding: 0.75rem 1.5rem; cursor: pointer; font-size: 0.875rem; font-weight: 500; color: var(--gris); border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+  .tab.active { color: var(--foret); border-bottom-color: var(--foret); }
+
+  .chien-card {
+    background: var(--gris-light); border-radius: 10px; padding: 1.25rem;
+    margin-bottom: 1rem; border-left: 4px solid var(--foret);
+  }
+  .chien-card-title {
+    font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--foret); margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-brand" onclick="showPage('home')">
+    <span class="paw">🐾</span> Les Toutous de Io
+  </a>
+  <div class="nav-links">
+    <a onclick="showPage('home')" id="nav-home" class="active">Accueil</a>
+    <a onclick="showPage('services')" id="nav-services">Services & Tarifs</a>
+    <a onclick="showPage('booking')" id="nav-booking">Réserver</a>
+    <a onclick="showPage('booking')" class="nav-cta">Première demande</a>
+  </div>
+</nav>
+
+<!-- ===================== HOME PAGE ===================== -->
+<div class="page active" id="page-home">
+
+  <div class="hero">
+    <div class="hero-badge">🐾 Pension canine familiale · Saint-Pée-sur-Nivelle</div>
+    <h1>Votre chien <em>chez nous</em>,<br>comme à la maison</h1>
+    <p>Une garde familiale au cœur du Pays Basque, avec Togo notre border collie pour veiller sur vos compagnons. Diplômés ACACED, déclarés et assurés.</p>
+    <div class="hero-actions">
+      <button class="btn-primary" onclick="showPage('booking')">Faire une demande</button>
+      <button class="btn-outline" onclick="showPage('services')">Voir les services</button>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><div class="stat-num">4</div><div class="stat-label">Max. chiens simultanés</div></div>
+      <div class="stat"><div class="stat-num">100%</div><div class="stat-label">Familial & personnalisé</div></div>
+      <div class="stat"><div class="stat-num">ACACED</div><div class="stat-label">Diplômés tous deux</div></div>
+    </div>
+  </div>
+
+  <!-- PRÉSENTATION -->
+  <div class="section">
+    <div class="section-title">Qui sommes-nous ?</div>
+    <div class="section-sub">Une pension à taille humaine, pour une garde sur-mesure et en toute confiance.</div>
+
+    <div class="team-grid">
+      <div class="team-card">
+        <div class="team-avatar">🌺</div>
+        <h3>Iolana Mendy</h3>
+        <div class="role">Fondatrice & gardienne principale</div>
+        <p>Passionnée par les animaux depuis toujours, j'ai fait de cette vocation mon métier. Déclarée, assurée, j'accueille chaque chien comme le mien.</p>
+        <span class="badge-acaced">✓ Diplômée ACACED</span>
+      </div>
+      <div class="team-card">
+        <div class="team-avatar">🏔️</div>
+        <h3>Ronan</h3>
+        <div class="role">Co-référent & promenades montagne</div>
+        <p>Coach sportif et amoureux de la nature basque, Ronan accompagne les randonnées du jeudi et veille avec moi au bien-être des toutous.</p>
+        <span class="badge-acaced">✓ Diplômé ACACED</span>
+      </div>
+      <div class="team-card">
+        <div class="team-avatar">🐾</div>
+        <h3>Togo</h3>
+        <div class="role">Border Collie · Mascotte officielle</div>
+        <p>Notre border collie est le parfait compagnon de jeux et testeur officiel de la sociabilité des pensionnaires. Il fait partie de la famille !</p>
+        <span class="badge-acaced">⭐ Chien référent</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="paw-divider">🐾 · 🐾 · 🐾</div>
+
+  <!-- CONDITIONS -->
+  <div class="section" style="padding-top: 1rem;">
+    <div class="section-title">Conditions d'accueil</div>
+    <div class="section-sub">Pour le bien-être de tous les pensionnaires, nous demandons que votre chien respecte ces conditions.</div>
+    <div class="conditions-list">
+      <div class="condition-item"><span class="check">✓</span> Vaccins à jour (dont toux du chenil)</div>
+      <div class="condition-item"><span class="check">✓</span> Sociable humains, bébés & enfants</div>
+      <div class="condition-item"><span class="check">✓</span> Sociable avec les autres chiens</div>
+      <div class="condition-item"><span class="check">✓</span> Sait rester seul sans aboyer</div>
+      <div class="condition-item"><span class="check">✓</span> Propre en intérieur</div>
+      <div class="condition-item"><span class="check">✓</span> Non destructeur</div>
+      <div class="condition-item" style="border-color: #fecaca; background: #fff5f5;">
+        <span style="color: var(--danger); font-size:1.1rem;">✗</span>
+        <span style="color: var(--danger);">Mâles non castrés non acceptés</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="paw-divider">🐾 · 🐾 · 🐾</div>
+
+  <!-- PROCESSUS -->
+  <div class="section" style="padding-top: 1rem;">
+    <div class="section-title">Comment ça se passe ?</div>
+    <div class="section-sub">Un processus pensé pour que la première garde se passe dans les meilleures conditions.</div>
+    <div class="process-steps">
+      <div class="process-step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Premier contact & rencontre</h4>
+          <p>Vous nous contactez, on fixe ensemble un lieu et une date pour se rencontrer en extérieur avec nos chiens. L'objectif : vérifier que tout le monde s'entend bien !</p>
+        </div>
+      </div>
+      <div class="process-step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Demi-journée test obligatoire</h4>
+          <p>Si la rencontre se passe bien, on planifie une demi-journée test. C'est indispensable avant toute première garde — pour vous rassurer et pour nous permettre de mieux connaître votre chien.</p>
+        </div>
+      </div>
+      <div class="process-step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Réservation confirmée & acompte</h4>
+          <p>Après validation du test, vous pouvez réserver. Un acompte de 20% est demandé à la réservation. Annulation remboursée si elle intervient plus de 30 jours avant la date de début.</p>
+        </div>
+      </div>
+      <div class="process-step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>Séjour & retour heureux</h4>
+          <p>Votre chien profite de son séjour à la maison, en famille, avec ses nouveaux amis. Vous recevez des nouvelles régulières !</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SERVICES RAPIDES -->
+  <div class="section">
+    <div class="section-title">Nos services</div>
+    <div class="section-sub">De la pension longue durée à la balade quotidienne, on s'adapte à vos besoins.</div>
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-icon">🏡</div>
+        <h3>Pension familiale</h3>
+        <p>Votre chien vit avec nous, dans notre maison, intégré à la famille. Max. 4 chiens simultanément pour une attention personnalisée.</p>
+        <div class="card-price">25 €/jour · 20 €/chien dès 2</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🏔️</div>
+        <h3>Randonnée montagne</h3>
+        <p>Chaque jeudi matin, Ronan emmène vos chiens en randonnée de 2h dans les montagnes basques. Récupération & dépose à domicile.</p>
+        <div class="card-price">30 € · Max. 5 chiens · Jeudi ~9h</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🏠</div>
+        <h3>Visite à domicile</h3>
+        <p>30 minutes chez vous : sortie, eau, repas, câlins. Idéal pour les chiens qui préfèrent leur environnement familier.</p>
+        <div class="card-price">Selon zone · voir tarifs</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🦮</div>
+        <h3>Balade longue</h3>
+        <p>1 heure de sortie enrichissante : jeux, eau, activités. Votre chien rentre fatigué et heureux !</p>
+        <div class="card-price">Selon zone · voir tarifs</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🚐</div>
+        <h3>Transport à domicile</h3>
+        <p>Nous venons chercher et ramener votre chien chez vous dans un rayon de 60 km autour de Saint-Pée-sur-Nivelle.</p>
+        <div class="card-price">Inclus randonnée · autres sur devis</div>
+      </div>
+    </div>
+    <div style="text-align:center; margin-top: 2rem;">
+      <button class="btn-primary" onclick="showPage('services')">Voir tous les tarifs</button>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-brand">🐾 Les Toutous de Io</div>
+    <p>Pension canine familiale · Saint-Pée-sur-Nivelle, Pays Basque<br>Diplômés ACACED · Déclarée & assurée</p>
+    <div class="footer-links">
+      <a onclick="showPage('home')">Accueil</a>
+      <a onclick="showPage('services')">Services</a>
+      <a onclick="showPage('booking')">Réserver</a>
+      <a>Mentions légales</a>
+      <a>Contact</a>
+    </div>
+    <p>© 2025 Les Toutous de Io · Iolana Mendy</p>
+  </footer>
+</div>
+
+<!-- ===================== SERVICES PAGE ===================== -->
+<div class="page" id="page-services">
+
+  <div class="services-hero">
+    <h1>Services & Tarifs</h1>
+    <p>Tout ce que nous proposons pour le bonheur de votre compagnon</p>
+  </div>
+
+  <div class="section">
+
+    <!-- PENSION -->
+    <div class="service-block">
+      <div class="service-header">
+        <h2>🏡 Pension familiale</h2>
+        <span class="service-tag">Service principal</span>
+      </div>
+      <p class="service-desc">Votre chien vit dans notre maison, en famille, avec Togo notre border collie. Maximum 4 chiens en simultané — pour une attention individuelle garantie. Les chiens ont accès à l'espace de vie, au jardin, et sont accompagnés toute la journée. Des nouvelles photos et vidéos vous sont partagées régulièrement.</p>
+      <div class="pricing-table">
+        <div class="price-item"><div class="amount">25 €</div><div class="label">Par jour · 1 chien</div></div>
+        <div class="price-item"><div class="amount">20 €</div><div class="label">Par chien · dès 2 chiens</div></div>
+        <div class="price-item"><div class="amount">20%</div><div class="label">Acompte à la réservation</div></div>
+        <div class="price-item"><div class="amount">4 max</div><div class="label">Chiens simultanés</div></div>
+      </div>
+      <div class="upsell-tip">
+        <span class="icon">💡</span>
+        <span>Pour un séjour de plus de 5 nuits, pensez à l'<strong>Album photo souvenir</strong> — un beau souvenir du séjour de votre compagnon !</span>
+      </div>
+    </div>
+
+    <!-- RANDONNÉE -->
+    <div class="service-block">
+      <div class="service-header">
+        <h2>🏔️ Randonnée montagne</h2>
+        <span class="service-tag">Tous les jeudis</span>
+      </div>
+      <p class="service-desc">Chaque jeudi matin vers 9h, Ronan emmène un petit groupe de chiens (5 max) pour une randonnée de 2h dans les montagnes du Pays Basque. Récupération à domicile, randonnée, retour à domicile. Un moment exceptionnel pour votre chien !</p>
+      <div class="pricing-table">
+        <div class="price-item"><div class="amount">30 €</div><div class="label">Par chien</div></div>
+        <div class="price-item"><div class="amount">5 max</div><div class="label">Chiens par sortie</div></div>
+        <div class="price-item"><div class="amount">Jeudi 9h</div><div class="label">Horaire fixe</div></div>
+      </div>
+      <div class="upsell-tip">
+        <span class="icon">💡</span>
+        <span>Si votre chien est en pension et qu'un jeudi tombe dans son séjour, proposez-lui cette aventure montagne — une expérience en plus !</span>
+      </div>
+    </div>
+
+    <!-- VISITES & BALADES -->
+    <div class="service-block">
+      <div class="service-header">
+        <h2>🏠 Visite à domicile & Balade</h2>
+        <span class="service-tag">À domicile</span>
+      </div>
+      <p class="service-desc">
+        <strong>Visite (30 min)</strong> : sortie rapide pour les besoins, vérification de l'eau, repas si besoin, jeu et câlins. Idéal pour les chiens qui restent chez eux.<br><br>
+        <strong>Balade (1h)</strong> : sortie longue et enrichissante, jeux, eau, collation si besoin. Votre chien rentre épuisé et heureux !
+      </p>
+      <p style="font-size:0.85rem; font-weight: 600; color: var(--texte); margin-bottom: 0.75rem;">Tarifs selon zone géographique</p>
+      <div class="zone-grid">
+        <div class="price-item">
+          <div style="font-size:0.72rem; font-weight:700; color: var(--terre); text-transform:uppercase; margin-bottom:4px;">Zone 1</div>
+          <div class="amount" style="font-size:1.1rem;">Proche</div>
+          <div class="label">Visite & balade · tarif de base</div>
+        </div>
+        <div class="price-item">
+          <div style="font-size:0.72rem; font-weight:700; color: var(--terre); text-transform:uppercase; margin-bottom:4px;">Zone 2</div>
+          <div class="amount" style="font-size:1.1rem;">Intermédiaire</div>
+          <div class="label">Supplément kilométrique</div>
+        </div>
+        <div class="price-item">
+          <div style="font-size:0.72rem; font-weight:700; color: var(--terre); text-transform:uppercase; margin-bottom:4px;">Zone 3</div>
+          <div class="amount" style="font-size:1.1rem;">Éloigné</div>
+          <div class="label">Supplément majoré</div>
+        </div>
+        <div class="price-item" style="grid-column: span 2;">
+          <div style="font-size:0.72rem; font-weight:700; color: var(--gris); text-transform:uppercase; margin-bottom:4px;">Hors zone</div>
+          <div class="amount" style="font-size:1rem;">Sur devis</div>
+          <div class="label">Nous contacter</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRANSPORT -->
+    <div class="service-block" style="border-left: 4px solid var(--foret);">
+      <div class="service-header">
+        <h2>🚐 Transport à domicile</h2>
+        <span class="service-tag">Service inclus</span>
+      </div>
+      <p class="service-desc">Nous proposons la récupération et le dépôt de votre chien à votre domicile pour tous nos services, dans un rayon de <strong>60 km</strong> autour de Saint-Pée-sur-Nivelle. Plus besoin de vous déplacer — on vient chercher et ramener votre compagnon !</p>
+      <div class="pricing-table">
+        <div class="price-item"><div class="amount">60 km</div><div class="label">Rayon maximum</div></div>
+        <div class="price-item"><div class="amount">Inclus</div><div class="label">Randonnée montagne</div></div>
+        <div class="price-item"><div class="amount">Sur devis</div><div class="label">Autres services</div></div>
+      </div>
+    </div>
+
+    <!-- ADD-ONS -->
+    <div style="margin-top: 2rem;">
+      <div class="section-title" style="font-size:1.4rem;">✨ Services additionnels</div>
+      <div class="section-sub">Des petites attentions pour rendre le séjour encore plus spécial.</div>
+      <div class="addons-grid">
+        <div class="addon-card">
+          <div class="addon-icon">📸</div>
+          <h4>Album photo souvenir</h4>
+          <p>Un beau livre photo du séjour de votre compagnon, pour garder ces moments précieux.</p>
+          <div class="addon-price">30 €</div>
+        </div>
+        <div class="addon-card">
+          <div class="addon-icon">🦴</div>
+          <h4>Collier personnalisé</h4>
+          <p>Collier avec pendentif os en silicone gravé du prénom de votre chien.</p>
+          <div class="addon-price">15 €</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    <div class="footer-brand">🐾 Les Toutous de Io</div>
+    <p>Pension canine familiale · Saint-Pée-sur-Nivelle, Pays Basque</p>
+    <div class="footer-links">
+      <a onclick="showPage('home')">Accueil</a>
+      <a onclick="showPage('booking')">Réserver</a>
+    </div>
+    <p>© 2025 Les Toutous de Io · Iolana Mendy</p>
+  </footer>
+</div>
+
+<!-- ===================== BOOKING PAGE ===================== -->
+<div class="page" id="page-booking">
+<div class="booking-layout">
+
+  <!-- FORM -->
+  <div class="booking-form-area">
+    <h2>Faire une demande</h2>
+    <p class="subtitle">Première fois ? Commencez par nous présenter votre chien — on vous recontacte pour organiser la rencontre.</p>
+
+    <div class="info-box">
+      <span class="ib-icon">ℹ️</span>
+      <span>La réservation directe est accessible aux clients ayant déjà effectué la demi-journée test. Si c'est votre première demande, nous vous contacterons pour organiser la rencontre préalable.</span>
+    </div>
+
+    <!-- SERVICE -->
+    <div class="form-section">
+      <div class="form-section-title">Service souhaité</div>
+      <div class="service-selector">
+        <div class="service-option selected" onclick="selectService(this, 'pension')" data-service="pension">
+          <span class="s-icon">🏡</span>
+          <span class="s-name">Pension</span>
+          <span class="s-price">Nuit(s)</span>
+        </div>
+        <div class="service-option" onclick="selectService(this, 'rando')" data-service="rando">
+          <span class="s-icon">🏔️</span>
+          <span class="s-name">Randonnée</span>
+          <span class="s-price">Jeudi · 2h</span>
+        </div>
+        <div class="service-option" onclick="selectService(this, 'visite')" data-service="visite">
+          <span class="s-icon">🏠</span>
+          <span class="s-name">Visite domicile</span>
+          <span class="s-price">30 min</span>
+        </div>
+        <div class="service-option" onclick="selectService(this, 'balade')" data-service="balade">
+          <span class="s-icon">🦮</span>
+          <span class="s-name">Balade</span>
+          <span class="s-price">1 heure</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- DATES -->
+    <div class="form-section" id="dates-section">
+      <div class="form-section-title">Dates souhaitées</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date d'arrivée</label>
+          <input type="date" id="date-start" onchange="updateSummary()">
+        </div>
+        <div class="form-group" id="date-end-group">
+          <label>Date de départ</label>
+          <input type="date" id="date-end" onchange="updateSummary()">
+        </div>
+      </div>
+      <div class="form-row" id="nb-chiens-row">
+        <div class="form-group">
+          <label>Nombre de chiens</label>
+          <select id="nb-chiens-select" onchange="updateSummary(); renderChiensForms();">
+            <option value="1">1 chien — 25 €/jour</option>
+            <option value="2">2 chiens — 20 €/chien/jour</option>
+            <option value="3">3 chiens — 20 €/chien/jour</option>
+            <option value="4">4 chiens — 20 €/chien/jour</option>
+          </select>
+        </div>
+        <div class="form-group" style="display:flex; align-items:flex-end;">
+          <div style="background:var(--gris-light); border-radius:8px; padding:0.65rem 0.9rem; font-size:0.8rem; color:var(--gris); width:100%; line-height:1.4;">
+            Tarif dégressif dès 2 chiens du même foyer.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CLIENT -->
+    <div class="form-section">
+      <div class="form-section-title">Vos coordonnées</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Prénom</label>
+          <input type="text" placeholder="Prénom">
+        </div>
+        <div class="form-group">
+          <label>Nom</label>
+          <input type="text" placeholder="Nom de famille">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" placeholder="votre@email.com">
+        </div>
+        <div class="form-group">
+          <label>Téléphone</label>
+          <input type="tel" placeholder="06 xx xx xx xx">
+        </div>
+      </div>
+      <div class="form-group" id="address-group" style="display:none;">
+        <label>Adresse (pour visite/balade)</label>
+        <input type="text" placeholder="Votre adresse complète">
+      </div>
+    </div>
+
+    <!-- CHIENS (dynamique selon nb sélectionné) -->
+    <div class="form-section" id="chiens-section">
+      <div class="form-section-title">Vos chiens</div>
+      <div style="background:#fff5f5; border:1px solid #fecaca; border-radius:8px; padding:0.75rem 1rem; font-size:0.82rem; color:var(--danger); margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem;">
+        <span>⚠️</span> <span>Nous n'acceptons pas les mâles non castrés.</span>
+      </div>
+      <div id="chiens-container">
+        <!-- injecté par renderChiensForms() -->
+      </div>
+    </div>
+
+    <!-- UPSELLS INTELLIGENTS -->
+    <div class="booking-upsells" id="upsell-section" style="display:none;">
+      <h4>💡 Suggestions pour votre séjour</h4>
+      <div id="upsell-items"></div>
+    </div>
+
+    <!-- MINI CALENDAR (aperçu dispo) -->
+    <div class="form-section">
+      <div class="form-section-title">Aperçu des disponibilités</div>
+      <div class="mini-calendar">
+        <div class="cal-header">
+          <button class="cal-nav" onclick="changeMonth(-1)">‹</button>
+          <h3 id="cal-month-label">Juillet 2025</h3>
+          <button class="cal-nav" onclick="changeMonth(1)">›</button>
+        </div>
+        <div class="cal-grid">
+          <div class="cal-days-header">
+            <div class="cal-day-name">L</div><div class="cal-day-name">M</div>
+            <div class="cal-day-name">M</div><div class="cal-day-name">J</div>
+            <div class="cal-day-name">V</div><div class="cal-day-name">S</div>
+            <div class="cal-day-name">D</div>
+          </div>
+          <div class="cal-days" id="cal-days"></div>
+        </div>
+        <div class="cal-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#D1FAE5"></div> Disponible</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#fef9c3"></div> Partiel (2–3 chiens)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#fee2e2"></div> Complet (4 chiens)</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SIDEBAR SUMMARY -->
+  <div>
+    <div class="order-summary">
+      <div class="summary-title">📋 Récapitulatif</div>
+
+      <div class="summary-line">
+        <span class="sl-label">Service</span>
+        <span class="sl-value" id="sum-service">Pension</span>
+      </div>
+      <div class="summary-line" id="sum-dates-line" style="display:none;">
+        <span class="sl-label">Dates</span>
+        <span class="sl-value" id="sum-dates">—</span>
+      </div>
+      <div class="summary-line" id="sum-nights-line" style="display:none;">
+        <span class="sl-label">Durée</span>
+        <span class="sl-value" id="sum-nights">—</span>
+      </div>
+      <div id="sum-addons"></div>
+
+      <hr class="summary-divider">
+
+      <div class="summary-total">
+        <span class="t-label">Estimation</span>
+        <span class="t-amount" id="sum-total">Sur devis</span>
+      </div>
+      <div style="text-align:right; font-size:0.8rem; color:var(--terre); font-weight:600; margin-top:-0.75rem; margin-bottom:0.75rem;" id="sum-deposit"></div>
+
+      <div class="deposit-note">
+        🔐 Un acompte de 20% est demandé à la confirmation. Remboursable si annulation effectuée plus de 30 jours avant la date de garde.
+      </div>
+
+      <button class="btn-book" onclick="submitBooking()">Envoyer ma demande</button>
+      <p class="book-note">Nous vous répondons sous 24h pour confirmer les disponibilités et organiser la rencontre si c'est votre première demande.</p>
+
+      <div class="process-info">
+        <h4>Notre processus</h4>
+        <div class="pi-step"><span class="pi-dot">●</span> Rencontre en extérieur avec nos chiens</div>
+        <div class="pi-step"><span class="pi-dot">●</span> Demi-journée test obligatoire</div>
+        <div class="pi-step"><span class="pi-dot">●</span> Confirmation & acompte 20%</div>
+        <div class="pi-step"><span class="pi-dot">●</span> Séjour et retour heureux 🐾</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ===================== PLANNING PAGE ===================== -->
+<div class="page" id="page-planning">
+
+  <div class="planning-header">
+    <div>
+      <h1>🗓️ Planning</h1>
+      <p style="font-size:0.82rem; color: var(--gris); margin-top:2px;">Vue d'ensemble · Espace administration</p>
+    </div>
+    <div class="week-nav">
+      <button class="week-btn" onclick="changeWeek(-1)">‹</button>
+      <span class="week-label" id="week-label">Semaine du 30 juin</span>
+      <button class="week-btn" onclick="changeWeek(1)">›</button>
+    </div>
+    <div style="display:flex; gap: 0.75rem; flex-wrap:wrap;">
+      <button class="btn-primary" style="font-size:0.82rem; padding: 8px 16px;" onclick="openModal('add-dog-modal')">+ Ajouter un chien</button>
+    </div>
+  </div>
+
+  <div class="planning-grid">
+    <!-- CAPACITY -->
+    <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+      <div style="background:white; border-radius:10px; padding: 1rem 1.5rem; border: 1px solid #eee; flex:1; min-width:140px; text-align:center;">
+        <div style="font-size:1.8rem; font-weight:700; color: var(--foret);" id="cap-today">2</div>
+        <div style="font-size:0.75rem; color: var(--gris); text-transform:uppercase; letter-spacing:0.05em;">Chiens aujourd'hui</div>
+        <div class="capacity-bar" style="margin-top:8px;"><div class="capacity-fill cap-2"></div></div>
+      </div>
+      <div style="background:white; border-radius:10px; padding: 1rem 1.5rem; border: 1px solid #eee; flex:1; min-width:140px; text-align:center;">
+        <div style="font-size:1.8rem; font-weight:700; color: var(--or);">3</div>
+        <div style="font-size:0.75rem; color: var(--gris); text-transform:uppercase; letter-spacing:0.05em;">Rando jeudi</div>
+        <div class="capacity-bar" style="margin-top:8px;"><div class="capacity-fill cap-3"></div></div>
+      </div>
+      <div style="background:white; border-radius:10px; padding: 1rem 1.5rem; border: 1px solid #eee; flex:1; min-width:140px; text-align:center;">
+        <div style="font-size:1.8rem; font-weight:700; color: var(--success);">1</div>
+        <div style="font-size:0.75rem; color: var(--gris); text-transform:uppercase; letter-spacing:0.05em;">Demandes en attente</div>
+      </div>
+      <div style="background:white; border-radius:10px; padding: 1rem 1.5rem; border: 1px solid #eee; flex:1; min-width:140px; text-align:center;">
+        <div style="font-size:1.8rem; font-weight:700; color: var(--terre);">2</div>
+        <div style="font-size:0.75rem; color: var(--gris); text-transform:uppercase; letter-spacing:0.05em;">Arrivées cette semaine</div>
+      </div>
+    </div>
+
+    <!-- WEEK VIEW -->
+    <div class="week-grid" id="week-grid">
+      <!-- injected by JS -->
+    </div>
+
+    <!-- PENDING REQUESTS -->
+    <div style="margin-top: 2rem;">
+      <h3 style="font-family:'Playfair Display', serif; color: var(--foret); margin-bottom: 1rem;">📨 Demandes en attente</h3>
+      <div id="pending-requests">
+        <div style="background:white; border-radius:10px; padding: 1.25rem 1.5rem; border: 1px solid #eee; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:0.75rem;">
+          <div>
+            <div style="font-weight:600; font-size:0.9rem;">Luna · Golden Retriever · 4 ans</div>
+            <div style="font-size:0.78rem; color:var(--gris); margin-top:2px;">Souhaitée : 15–22 juil. · Sophie Martin · 06 12 34 56 78</div>
+            <div style="font-size:0.72rem; background:#fef9c3; color:#92400e; border-radius:4px; padding:2px 8px; display:inline-block; margin-top:4px;">En attente rencontre</div>
+          </div>
+          <div style="display:flex; gap:0.5rem;">
+            <button class="add-btn" style="background:var(--success);" onclick="showToast('✅ Rendez-vous confirmé pour Luna !')">Confirmer RDV</button>
+            <button class="add-btn" style="background:var(--danger);">Refuser</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ADD DOG -->
+<div class="modal-overlay" id="add-dog-modal">
+  <div class="modal">
+    <h2>Ajouter un chien au planning</h2>
+    <p>Enregistrez manuellement un pensionnaire ou validez une demande existante.</p>
+    <div class="form-row">
+      <div class="form-group"><label>Nom du chien</label><input type="text" placeholder="Ex : Max"></div>
+      <div class="form-group"><label>Race</label><input type="text" placeholder="Ex : Berger Australien"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Arrivée</label><input type="date"></div>
+      <div class="form-group"><label>Départ</label><input type="date"></div>
+    </div>
+    <div class="form-group">
+      <label>Service</label>
+      <select>
+        <option>Pension</option>
+        <option>Randonnée jeudi</option>
+        <option>Visite domicile</option>
+        <option>Balade</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Statut</label>
+      <select>
+        <option>Confirmé</option>
+        <option>Test en attente</option>
+        <option>Demande</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('add-dog-modal')">Annuler</button>
+      <button class="btn-primary" onclick="closeModal('add-dog-modal'); showToast('✅ Chien ajouté au planning !')">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL BOOKING SUCCESS -->
+<div class="modal-overlay" id="booking-success-modal">
+  <div class="modal" style="text-align:center;">
+    <div style="font-size:3rem; margin-bottom:1rem;">🐾</div>
+    <h2>Demande envoyée !</h2>
+    <p>Merci pour votre demande. Nous vous recontactons sous 24h pour organiser la rencontre avec nos chiens — première étape vers un séjour serein pour votre compagnon !</p>
+    <div class="modal-actions" style="justify-content:center;">
+      <button class="btn-primary" onclick="closeModal('booking-success-modal')">Parfait, merci !</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============= FICHES CHIENS DYNAMIQUES =============
+function renderChiensForms() {
+  const nb = parseInt(document.getElementById('nb-chiens-select')?.value) || 1;
+  const container = document.getElementById('chiens-container');
+  if (!container) return;
+  container.innerHTML = '';
+  for (let i = 1; i <= nb; i++) {
+    container.innerHTML += `
+      <div class="chien-card">
+        <div class="chien-card-title">🐾 Chien ${nb > 1 ? i : ''}</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Prénom du chien</label>
+            <input type="text" id="chien-nom-${i}" placeholder="Ex : Filou">
+          </div>
+          <div class="form-group">
+            <label>Race</label>
+            <input type="text" id="chien-race-${i}" placeholder="Ex : Labrador">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Âge</label>
+            <input type="text" id="chien-age-${i}" placeholder="Ex : 3 ans">
+          </div>
+          <div class="form-group">
+            <label>Poids approximatif</label>
+            <input type="text" id="chien-poids-${i}" placeholder="Ex : 25 kg">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Sexe</label>
+            <select id="chien-sexe-${i}">
+              <option value="">-- Sélectionner --</option>
+              <option value="femelle">Femelle</option>
+              <option value="male_castre">Mâle castré</option>
+            </select>
+          </div>
+          <div class="form-group" style="display:flex; align-items:flex-end;">
+            <div style="background:white; border-radius:8px; padding:0.65rem 0.9rem; font-size:0.78rem; color:var(--gris); width:100%; line-height:1.4;">
+              Mâles non castrés refusés.
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Infos complémentaires (alimentation, médicaments, habitudes…)</label>
+          <textarea id="chien-infos-${i}" placeholder="Tout ce qui nous aidera à mieux l'accueillir…" rows="2"></textarea>
+        </div>
+      </div>`;
+  }
+}
+
+// ============= NAVIGATION =============
+function showPage(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
+  document.getElementById('page-' + pageId).classList.add('active');
+  const navEl = document.getElementById('nav-' + pageId);
+  if (navEl) navEl.classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// ============= SERVICE SELECTION =============
+let selectedService = 'pension';
+function selectService(el, service) {
+  document.querySelectorAll('.service-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedService = service;
+  document.getElementById('address-group').style.display = (service === 'visite' || service === 'balade') ? 'block' : 'none';
+  document.getElementById('date-end-group').style.display = service === 'pension' ? 'block' : 'none';
+  document.getElementById('nb-chiens-row').style.display = service === 'pension' ? 'grid' : 'none';
+  document.getElementById('chiens-section').style.display = service === 'planning' ? 'none' : 'block';
+  renderChiensForms();
+  updateSummary();
+  updateUpsells();
+}
+
+// ============= SUMMARY =============
+function updateSummary() {
+  const serviceNames = { pension: 'Pension familiale', rando: 'Randonnée montagne', visite: 'Visite domicile', balade: 'Balade (1h)' };
+  document.getElementById('sum-service').textContent = serviceNames[selectedService] || 'Pension';
+
+  const start = document.getElementById('date-start').value;
+  const end = document.getElementById('date-end').value;
+  const datesLine = document.getElementById('sum-dates-line');
+  const nightsLine = document.getElementById('sum-nights-line');
+
+  if (start) {
+    datesLine.style.display = 'flex';
+    document.getElementById('sum-dates').textContent = end ? `${formatDate(start)} → ${formatDate(end)}` : formatDate(start);
+    if (end && selectedService === 'pension') {
+      const nights = Math.max(0, Math.round((new Date(end) - new Date(start)) / 86400000));
+      nightsLine.style.display = 'flex';
+      document.getElementById('sum-nights').textContent = `${nights} nuit${nights > 1 ? 's' : ''}`;
+      updateUpsells(nights);
+    } else {
+      nightsLine.style.display = 'none';
+      updateUpsells(0);
+    }
+  } else {
+    datesLine.style.display = 'none';
+    nightsLine.style.display = 'none';
+  }
+  recalcTotal();
+}
+
+function formatDate(d) {
+  const dt = new Date(d);
+  return dt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+}
+
+// ============= SMART UPSELLS =============
+// ============= SMART UPSELLS =============
+
+// Compte les jeudis dans une période
+function compterJeudis(startDate, endDate) {
+  if (!startDate || !endDate) return 0;
+  let count = 0;
+  for (let d = new Date(startDate); d <= new Date(endDate); d.setDate(d.getDate() + 1)) {
+    if (d.getDay() === 4) count++;
+  }
+  return count;
+}
+
+// Prix rando selon contexte
+function prixRando(nbChiens, enPension) {
+  if (enPension) return 20;         // chien déjà en pension
+  if (nbChiens > 1) return 25;     // 2 chiens même foyer
+  return 30;                        // tarif standard
+}
+
+let addedUpsells = new Map(); // id → { qty, amount }
+
+function updateUpsells(nights = 0) {
+  const start = document.getElementById('date-start').value;
+  const end = document.getElementById('date-end').value;
+  const nbChiens = parseInt(document.getElementById('nb-chiens-select')?.value) || 1;
+  const section = document.getElementById('upsell-section');
+  const container = document.getElementById('upsell-items');
+
+  if (selectedService !== 'pension' || !start) { section.style.display = 'none'; return; }
+
+  const nbJeudis = compterJeudis(start, end);
+  const unitRando = prixRando(nbChiens, true); // toujours en pension ici
+  const labelRando = unitRando < 30 ? `${unitRando} €/chien · (en pension)` : `${unitRando} €`;
+
+  const items = [];
+
+  // Rando : autant de lignes que de jeudis
+  if (nbJeudis > 0) {
+    for (let i = 1; i <= nbJeudis; i++) {
+      items.push({
+        id: `rando_${i}`,
+        baseId: 'rando',
+        icon: '🏔️',
+        name: `Randonnée jeudi${nbJeudis > 1 ? ` #${i}` : ''}`,
+        reason: nbJeudis > 1 ? `${nbJeudis} jeudis pendant le séjour` : 'Un jeudi tombe pendant le séjour',
+        price: `${unitRando} €`,
+        amount: unitRando
+      });
+    }
+  }
+
+  // Album si > 5 nuits
+  if (nights > 5) {
+    items.push({ id: 'album', baseId: 'album', icon: '📸', name: 'Album photo souvenir', reason: 'Séjour de plus de 5 nuits — un beau souvenir !', price: '30 €', amount: 30 });
+  }
+
+  // Collier toujours proposé en pension
+  items.push({ id: 'collier', baseId: 'collier', icon: '🦴', name: 'Collier personnalisé', reason: 'Un cadeau unique avec le prénom de votre compagnon', price: '15 €', amount: 15 });
+
+  if (!items.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  container.innerHTML = '';
+
+  items.forEach(u => {
+    const isAdded = addedUpsells.has(u.id);
+    const isRando = u.id.startsWith('rando');
+    const nbChiens = parseInt(document.getElementById('nb-chiens-select')?.value) || 1;
+
+    // Pour la rando avec plusieurs chiens : afficher des cases à cocher par chien
+    let chiensSelector = '';
+    if (isRando && nbChiens > 1) {
+      const chiensOptions = [];
+      for (let c = 1; c <= nbChiens; c++) {
+        const nomChien = document.getElementById(`chien-nom-${c}`)?.value.trim() || `Chien ${c}`;
+        const checkId = `rando-chien-${u.id}-${c}`;
+        const checked = isAdded && addedUpsells.get(u.id)?.chiens?.includes(c) ? 'checked' : '';
+        chiensOptions.push(`
+          <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;cursor:pointer;">
+            <input type="checkbox" id="${checkId}" ${checked}
+              onchange="updateRandoChiens('${u.id}', '${u.name}', ${u.amount})"
+              style="width:14px;height:14px;accent-color:var(--foret);">
+            ${nomChien}
+          </label>`);
+      }
+      chiensSelector = `
+        <div style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid rgba(0,0,0,0.08);">
+          <div style="font-size:0.72rem;color:var(--gris);margin-bottom:0.4rem;">Pour quel(s) chien(s) ?</div>
+          <div style="display:flex;gap:1rem;flex-wrap:wrap;">${chiensOptions.join('')}</div>
+          ${isAdded ? `<div style="font-size:0.72rem;color:var(--foret);margin-top:0.4rem;">
+            Total : ${addedUpsells.get(u.id)?.total || 0} €
+          </div>` : ''}
+        </div>`;
+    }
+
+    container.innerHTML += `
+      <div class="upsell-item ${isAdded ? 'added' : ''}" id="upsell-${u.id}">
+        <div class="upsell-left" style="flex:1;">
+          <span class="u-icon">${u.icon}</span>
+          <div style="flex:1;">
+            <div class="u-name">${u.name}</div>
+            <div class="u-reason">${u.reason}${isRando ? ' · ' + u.price + '/chien' : ''}</div>
+            ${chiensSelector}
+          </div>
+        </div>
+        ${(!isRando || nbChiens === 1) ? `
+        <div class="upsell-right">
+          <span class="upsell-price">${u.price}</span>
+          <button class="add-btn ${isAdded ? 'added-btn' : ''}"
+            data-uid="${u.id}" data-uname="${u.name.replace(/"/g,'&quot;')}" data-uamount="${u.amount}"
+            onclick="toggleUpsellBtn(this)">
+            ${isAdded ? '✓ Ajouté' : '+ Ajouter'}
+          </button>
+        </div>` : ''}
+      </div>`;
+  });
+}
+
+function updateRandoChiens(upsellId, name, unitPrice) {
+  const nbChiens = parseInt(document.getElementById('nb-chiens-select')?.value) || 1;
+  const selected = [];
+  for (let c = 1; c <= nbChiens; c++) {
+    const cb = document.getElementById(`rando-chien-${upsellId}-${c}`);
+    if (cb?.checked) selected.push(c);
+  }
+  if (selected.length === 0) {
+    addedUpsells.delete(upsellId);
+  } else {
+    const total = selected.length * unitPrice;
+    addedUpsells.set(upsellId, { chiens: selected, total, unitPrice });
+  }
+  // Re-render l'item pour mettre à jour le total affiché
+  const nights = parseInt(document.getElementById('sum-nights')?.textContent) || 0;
+  updateUpsells(nights);
+  updateSummaryAddons();
+}
+
+function toggleUpsellBtn(btn) {
+  const id = btn.dataset.uid;
+  const name = btn.dataset.uname;
+  const amount = parseFloat(btn.dataset.uamount);
+  toggleUpsell(id, name, amount);
+}
+
+function toggleUpsell(id, name, amount) {
+  if (addedUpsells.has(id)) {
+    addedUpsells.delete(id);
+    showToast(`${name} retiré`);
+  } else {
+    addedUpsells.set(id, amount);
+    showToast(`✅ ${name} ajouté !`);
+  }
+  const nights = parseInt(document.getElementById('sum-nights')?.textContent) || 0;
+  updateUpsells(nights);
+  updateSummaryAddons();
+}
+
+function updateSummaryAddons() {
+  const container = document.getElementById('sum-addons');
+  container.innerHTML = '';
+  addedUpsells.forEach((val, id) => {
+    const icon = id.startsWith('rando') ? '🏔️' : id === 'album' ? '📸' : '🦴';
+    const baseLabel = id.startsWith('rando')
+      ? `Rando jeudi${id.includes('_') ? ' #' + id.split('_')[1] : ''}`
+      : id === 'album' ? 'Album photo' : 'Collier';
+
+    // val peut être un nombre (simple) ou un objet {chiens, total} (multi)
+    const montant = typeof val === 'object' ? val.total : val;
+    const detail = typeof val === 'object' && val.chiens
+      ? ` (${val.chiens.length} chien${val.chiens.length > 1 ? 's' : ''})`
+      : '';
+
+    container.innerHTML += `<div class="summary-line"><span class="sl-label">+ ${icon} ${baseLabel}${detail}</span><span class="sl-value">${montant} €</span></div>`;
+  });
+  recalcTotal();
+}
+
+function recalcTotal() {
+  const start = document.getElementById('date-start').value;
+  const end = document.getElementById('date-end').value;
+  let base = 0;
+  let label = 'Sur devis';
+
+  if (selectedService === 'pension' && start && end) {
+    const nights = Math.max(0, Math.round((new Date(end) - new Date(start)) / 86400000));
+    const nbChiens = parseInt(document.getElementById('nb-chiens-select')?.value) || 1;
+    const rate = nbChiens > 1 ? 20 : 25;
+    base = nights * rate * nbChiens;
+    label = base > 0 ? `${base} €` : 'Sur devis';
+  } else if (selectedService === 'randonnee') {
+    const nbChiens = parseInt(document.getElementById('nb-chiens-select')?.value) || 1;
+    const unit = prixRando(nbChiens, false);
+    base = unit * nbChiens;
+    label = `${base} €`;
+  }
+
+  let extras = 0;
+  addedUpsells.forEach(val => {
+    extras += typeof val === 'object' ? val.total : val;
+  });
+
+  if (base > 0) {
+    const total = base + extras;
+    const deposit = Math.round(total * 0.2);
+    document.getElementById('sum-total').textContent = `${total} €`;
+    document.getElementById('sum-deposit').textContent = `Acompte : ${deposit} €`;
+  } else if (extras > 0) {
+    document.getElementById('sum-total').textContent = `${extras} €`;
+    document.getElementById('sum-deposit').textContent = '';
+  } else {
+    document.getElementById('sum-total').textContent = label;
+    document.getElementById('sum-deposit').textContent = '';
+  }
+}
+
+// ============= EMAILJS =============
+emailjs.init('QynwZusGbtsAgGQqK');
+
+async function envoyerEmailConfirmation({ prenom, email, service, dateDebut, dateFin, nbChiens, chiens }) {
+  const serviceLabel = { pension: 'pension familiale', randonnee: 'randonnée montagne', visite: 'visite à domicile', balade: 'balade' }[service] || service;
+  const chiensNoms = chiens.map(c => c.nom).filter(Boolean).join(', ') || '—';
+  try {
+    await emailjs.send('service_r8y448c', 'confirmation_demande', {
+      email: email,
+      prenom: prenom,
+      service: serviceLabel,
+      chien_nom: chiensNoms,
+      date_debut: dateDebut ? new Date(dateDebut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—',
+      date_fin: dateFin ? new Date(dateFin).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—',
+    });
+    console.log('Email confirmation envoyé à', email);
+  } catch(e) {
+    console.warn('Email confirmation non envoyé :', e);
+  }
+}
+
+// ============= SUPABASE =============
+const SUPABASE_URL = 'https://xtxekhowasjzzplkskvf.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_siYC9zq1W1LRfwgjtJ2vCg_be1Eo0-c';
+
+async function sbGet(path) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    return res.ok ? res.json() : [];
+  } catch(e) {
+    return [];
+  }
+}
+
+async function sbPost(path, body) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+// ============= DONNÉES LIVE =============
+let liveReservations = [];
+let liveDispos = [];
+
+async function loadLiveData() {
+  try {
+    [liveReservations, liveDispos] = await Promise.all([
+      sbGet('reservations?select=date_debut,date_fin,nb_chiens,statut,service&statut=neq.annule'),
+      sbGet('disponibilites?select=date_debut,date_fin,type')
+    ]);
+  } catch(e) {
+    // Mode hors-ligne : calendrier fonctionne sans données live
+  }
+  renderCalendar();
+}
+
+function getCapaciteJour(dateStr) {
+  // Bloqué manuellement ?
+  const bloque = liveDispos.some(d => d.date_debut <= dateStr && d.date_fin >= dateStr);
+  if (bloque) return 'bloque';
+  // Compter chiens ce jour
+  const nb = liveReservations
+    .filter(r => r.statut !== 'annule' && r.service === 'pension' && r.date_debut <= dateStr && (r.date_fin === null || r.date_fin >= dateStr))
+    .reduce((sum, r) => sum + (r.nb_chiens || 1), 0);
+  if (nb >= 4) return 'full';
+  if (nb >= 2) return 'partial';
+  return 'dispo';
+}
+
+// ============= CALENDAR (connecté) =============
+const now = new Date();
+let calYear = now.getFullYear(), calMonth = now.getMonth();
+
+function renderCalendar() {
+  const months = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  document.getElementById('cal-month-label').textContent = `${months[calMonth]} ${calYear}`;
+  const container = document.getElementById('cal-days');
+  container.innerHTML = '';
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const offset = (firstDay + 6) % 7;
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+
+  for (let i = 0; i < offset; i++) {
+    const el = document.createElement('div');
+    el.className = 'cal-day empty';
+    container.appendChild(el);
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const el = document.createElement('div');
+    const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isPast = ds < todayStr;
+    const cap = getCapaciteJour(ds);
+    let cls = 'cal-day';
+    if (isPast) cls += ' empty';
+    else if (cap === 'full' || cap === 'bloque') cls += ' full';
+    else if (cap === 'partial') cls += ' partial';
+    if (ds === todayStr) cls += ' today';
+    el.className = cls;
+    el.textContent = d;
+    el.onclick = () => {
+      if (!el.classList.contains('full') && !el.classList.contains('empty')) {
+        document.querySelectorAll('.cal-day').forEach(x => x.classList.remove('selected'));
+        el.classList.add('selected');
+        document.getElementById('date-start').value = ds;
+        updateSummary();
+      }
+    };
+    container.appendChild(el);
+  }
+}
+
+function changeMonth(dir) {
+  calMonth += dir;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  renderCalendar();
+}
+
+// ============= SOUMISSION FORMULAIRE =============
+async function submitBooking() {
+  const btn = document.querySelector('.btn-book');
+  const prenom = document.querySelector('input[placeholder="Prénom"]').value.trim();
+  const nom = document.querySelector('input[placeholder="Nom de famille"]').value.trim();
+  const email = document.querySelector('input[type="email"]').value.trim();
+  const tel = document.querySelector('input[type="tel"]').value.trim();
+  const dateDebut = document.getElementById('date-start').value;
+  const dateFin = document.getElementById('date-end').value;
+  const nbChiens = parseInt(document.getElementById('nb-chiens-select')?.value) || 1;
+  const adresse = document.querySelector('input[placeholder="Votre adresse complète"]')?.value.trim() || '';
+
+  // Collecter toutes les fiches chien
+  const chiens = [];
+  for (let i = 1; i <= nbChiens; i++) {
+    chiens.push({
+      nom: document.getElementById(`chien-nom-${i}`)?.value.trim() || '',
+      race: document.getElementById(`chien-race-${i}`)?.value.trim() || '',
+      age: document.getElementById(`chien-age-${i}`)?.value.trim() || '',
+      poids: document.getElementById(`chien-poids-${i}`)?.value.trim() || '',
+      sexe: document.getElementById(`chien-sexe-${i}`)?.value || '',
+      infos: document.getElementById(`chien-infos-${i}`)?.value.trim() || ''
+    });
+  }
+
+  // Validation
+  if (!prenom || !email) { showToast('⚠️ Prénom et email obligatoires'); return; }
+  if (!chiens[0].nom) { showToast('⚠️ Le prénom du premier chien est obligatoire'); return; }
+
+  // Résumé texte de tous les chiens pour le champ message
+  const chiensResume = chiens.map((c, i) =>
+    `Chien ${nbChiens > 1 ? i+1 : ''}: ${c.nom} · ${c.race} · ${c.age} · ${c.poids} · ${c.sexe === 'femelle' ? 'Femelle' : 'Mâle castré'}\n${c.infos ? 'Infos: ' + c.infos : ''}`
+  ).join('\n---\n');
+
+  // Upsells
+  const hasRando = [...addedUpsells.keys()].some(k => k.startsWith('rando'));
+  const hasAlbum = addedUpsells.has('album');
+  const hasCollier = addedUpsells.has('collier');
+
+  // Détail rando par chien
+  let randoDetail = '';
+  addedUpsells.forEach((val, id) => {
+    if (id.startsWith('rando')) {
+      const num = id.split('_')[1];
+      if (typeof val === 'object' && val.chiens) {
+        const nomsChiens = val.chiens.map(c => {
+          const nom = document.getElementById(`chien-nom-${c}`)?.value.trim() || `Chien ${c}`;
+          return nom;
+        }).join(', ');
+        randoDetail += `\nRandonnée jeudi #${num} → ${nomsChiens} (${val.total} €)`;
+      } else {
+        randoDetail += `\nRandonnée jeudi #${num} → tous les chiens`;
+      }
+    }
+  });
+
+  btn.textContent = 'Envoi en cours…';
+  btn.disabled = true;
+
+  try {
+    // 1. Une seule demande dans Supabase — tous les chiens dans le message
+    await sbPost('demandes', {
+      prenom_contact: prenom,
+      nom_contact: nom,
+      email_contact: email,
+      telephone_contact: tel,
+      // Chien principal = premier chien
+      chien_nom: chiens[0].nom || 'Chien 1',
+      chien_race: chiens[0].race,
+      chien_age: chiens[0].age,
+      chien_poids: chiens[0].poids,
+      chien_sexe: chiens[0].sexe || null,
+      chien_infos: chiens[0].infos,
+      service: selectedService,
+      date_debut: dateDebut || null,
+      date_fin: dateFin || null,
+      nb_chiens: nbChiens,
+      option_randonnee: hasRando,
+      option_album: hasAlbum,
+      option_collier: hasCollier,
+      // Tous les chiens dans le message
+      message: chiensResume + (randoDetail ? '\n\nOptions randonnée :' + randoDetail : ''),
+      statut: 'en_attente'
+    });
+
+    // 2. Email de confirmation — non bloquant
+    envoyerEmailConfirmation({ prenom, email, service: selectedService, dateDebut, dateFin, nbChiens, chiens })
+      .catch(e => console.warn('Email non envoyé (non bloquant):', e));
+
+    openModal('booking-success-modal');
+    loadLiveData();
+
+  } catch(e) {
+    console.error('Erreur soumission:', e);
+    showToast('❌ Une erreur est survenue, réessayez ou contactez-nous directement.');
+  } finally {
+    btn.textContent = 'Envoyer ma demande';
+    btn.disabled = false;
+  }
+}
+
+// ============= MODAL / TOAST =============
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+});
+
+// ============= INIT =============
+loadLiveData();
+</script>
+</body>
+</html>
