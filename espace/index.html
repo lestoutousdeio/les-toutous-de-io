@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Espace client · Les Toutous de Io</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --foret: #2D5016; --foret-light: #3d6b1e;
+    --terre: #8B6340; --or: #D4A853; --or-light: #f0d08a;
+    --creme: #FAF7F2; --blanc: #ffffff;
+    --gris: #6B7280; --gris-light: #F3F0EB; --gris-border: #E5E0D8;
+    --texte: #1C1A17; --danger: #C0392B; --success: #16A34A;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: var(--creme); color: var(--texte); min-height: 100vh; }
+  a { color: var(--foret); }
+
+  /* ── ÉCRAN DE CHARGEMENT ── */
+  #loading-screen {
+    position: fixed; inset: 0; background: var(--creme); z-index: 200;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem;
+  }
+  .spinner { width: 34px; height: 34px; border: 3px solid var(--gris-border); border-top-color: var(--foret); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── AUTH (connexion) ── */
+  .auth-wrap {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 1.5rem; background: linear-gradient(160deg, var(--foret) 0%, #1a3a0a 100%);
+  }
+  .auth-card {
+    background: white; border-radius: 18px; padding: 2.5rem; max-width: 420px; width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  }
+  .auth-brand { text-align: center; margin-bottom: 1.75rem; }
+  .auth-brand .paw { font-size: 2.4rem; }
+  .auth-brand h1 { font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--foret); margin-top: 0.4rem; }
+  .auth-brand p { font-size: 0.82rem; color: var(--gris); margin-top: 0.25rem; }
+  .auth-form { display: flex; flex-direction: column; gap: 0.9rem; }
+  .field label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--gris); margin-bottom: 0.35rem; }
+  .field input {
+    width: 100%; border: 1.5px solid var(--gris-border); border-radius: 9px;
+    padding: 0.7rem 0.9rem; font-size: 0.95rem; font-family: inherit; outline: none; transition: border-color 0.2s;
+  }
+  .field input:focus { border-color: var(--foret); }
+  .btn-main {
+    width: 100%; background: var(--foret); color: white; border: none; border-radius: 10px;
+    padding: 0.85rem; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: background 0.2s; font-family: inherit;
+  }
+  .btn-main:hover { background: var(--foret-light); }
+  .btn-main:disabled { opacity: 0.6; cursor: default; }
+  .link-btn {
+    background: none; border: none; color: var(--foret); font-size: 0.83rem; cursor: pointer;
+    text-decoration: underline; font-family: inherit; padding: 0;
+  }
+  .auth-links { display: flex; flex-direction: column; gap: 0.6rem; align-items: center; margin-top: 1.25rem; text-align: center; }
+  .auth-msg { font-size: 0.85rem; border-radius: 9px; padding: 0.7rem 0.9rem; line-height: 1.5; display: none; }
+  .auth-msg.error { background: #FEF2F2; color: var(--danger); border: 1px solid #FECACA; display: block; }
+  .auth-msg.success { background: #F0FDF4; color: var(--success); border: 1px solid #BBF7D0; display: block; }
+  .auth-msg.info { background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; display: block; }
+  .form-title { font-weight: 600; font-size: 1rem; text-align: center; margin-bottom: 0.25rem; }
+  .form-sub { font-size: 0.82rem; color: var(--gris); text-align: center; margin-bottom: 0.5rem; line-height: 1.5; }
+
+  /* ── DASHBOARD ── */
+  #dashboard { display: none; }
+  .topbar {
+    background: white; border-bottom: 1px solid var(--gris-border);
+    padding: 0 1.5rem; height: 60px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 40;
+  }
+  .topbar .brand { display: flex; align-items: center; gap: 0.5rem; font-family: 'Playfair Display', serif; color: var(--foret); font-weight: 700; font-size: 1.05rem; }
+  .topbar .right { display: flex; align-items: center; gap: 0.9rem; }
+  .topbar .who { font-size: 0.82rem; color: var(--gris); }
+  .content { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+  .hello { font-family: 'Playfair Display', serif; font-size: 1.7rem; color: var(--foret); margin-bottom: 0.25rem; }
+  .hello-sub { color: var(--gris); font-size: 0.9rem; margin-bottom: 2rem; }
+  .section { margin-bottom: 2.5rem; }
+  .section-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--terre); margin-bottom: 1rem; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+  .card { background: white; border: 1px solid var(--gris-border); border-radius: 14px; padding: 1.25rem; }
+  .card.dog { display: flex; align-items: center; gap: 0.9rem; }
+  .dog-emoji { font-size: 1.8rem; }
+  .dog-name { font-weight: 600; }
+  .dog-meta { font-size: 0.8rem; color: var(--gris); }
+
+  .resa { background: white; border: 1px solid var(--gris-border); border-radius: 14px; padding: 1.1rem 1.25rem; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
+  .resa-dates { font-weight: 600; }
+  .resa-meta { font-size: 0.82rem; color: var(--gris); margin-top: 2px; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
+  .badge.confirme { background: #F0FDF4; color: var(--success); }
+  .badge.a_venir { background: #EFF6FF; color: #1D4ED8; }
+  .badge.passe { background: var(--gris-light); color: var(--gris); }
+  .resa-amount { font-weight: 700; color: var(--foret); }
+
+  .fid { background: white; border: 1px solid var(--gris-border); border-radius: 14px; padding: 1.25rem; margin-bottom: 0.75rem; }
+  .fid-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.75rem; }
+  .fid-dog { font-weight: 600; }
+  .fid-count { font-size: 0.82rem; color: var(--gris); }
+  .fid-bar { height: 10px; background: var(--gris-light); border-radius: 6px; overflow: hidden; }
+  .fid-fill { height: 100%; background: var(--foret); border-radius: 6px; transition: width 0.4s; }
+  .fid-note { font-size: 0.8rem; color: var(--terre); margin-top: 0.5rem; font-weight: 500; }
+  .fid-offert { background: #F0FDF4; color: var(--success); font-weight: 700; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; display: inline-block; margin-top: 0.5rem; }
+
+  .empty { background: white; border: 1px dashed var(--gris-border); border-radius: 14px; padding: 2rem; text-align: center; color: var(--gris); font-size: 0.88rem; }
+  .empty .e-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+
+  .cta-row { margin-top: 1rem; }
+  .btn-outline { display: inline-block; background: white; color: var(--foret); border: 1.5px solid var(--foret); border-radius: 10px; padding: 0.75rem 1.5rem; font-weight: 600; font-size: 0.9rem; text-decoration: none; cursor: pointer; }
+  .btn-outline:hover { background: rgba(45,80,22,0.05); }
+
+  .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--texte); color: white; padding: 0.85rem 1.25rem; border-radius: 10px; font-size: 0.85rem; z-index: 300; transform: translateY(80px); opacity: 0; transition: all 0.3s; max-width: 320px; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.error { background: var(--danger); }
+  .toast.success { background: var(--success); }
+</style>
+</head>
+<body>
+
+<!-- CHARGEMENT -->
+<div id="loading-screen"><div class="spinner"></div><div style="font-size:0.85rem;color:var(--gris);">Chargement de votre espace…</div></div>
+
+<!-- ══════════ AUTH ══════════ -->
+<div class="auth-wrap" id="auth-screen" style="display:none;">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="paw">🐾</div>
+      <h1>Les Toutous de Io</h1>
+      <p>Espace client</p>
+    </div>
+
+    <div class="auth-msg" id="auth-msg"></div>
+
+    <!-- Connexion classique (email + mot de passe) -->
+    <div id="view-login">
+      <div class="auth-form">
+        <div class="field"><label>Email</label><input type="email" id="login-email" placeholder="votre@email.com" autocomplete="email"></div>
+        <div class="field"><label>Mot de passe</label><input type="password" id="login-pwd" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')seConnecter()"></div>
+        <button class="btn-main" id="login-btn" onclick="seConnecter()">Se connecter</button>
+      </div>
+      <div class="auth-links">
+        <button class="link-btn" onclick="showAuthView('premiere')">Première connexion ? Créer mon accès</button>
+        <button class="link-btn" onclick="showAuthView('oubli')">Mot de passe oublié ?</button>
+      </div>
+    </div>
+
+    <!-- Première connexion (recevoir le lien) -->
+    <div id="view-premiere" style="display:none;">
+      <div class="form-title">Première connexion</div>
+      <div class="form-sub">Entrez l'email que vous nous avez communiqué. Nous vous envoyons un lien pour créer votre mot de passe.</div>
+      <div class="auth-form">
+        <div class="field"><label>Email</label><input type="email" id="premiere-email" placeholder="votre@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')envoyerLienCreation()"></div>
+        <button class="btn-main" id="premiere-btn" onclick="envoyerLienCreation()">Recevoir mon lien</button>
+      </div>
+      <div class="auth-links"><button class="link-btn" onclick="showAuthView('login')">← Retour à la connexion</button></div>
+    </div>
+
+    <!-- Mot de passe oublié -->
+    <div id="view-oubli" style="display:none;">
+      <div class="form-title">Mot de passe oublié</div>
+      <div class="form-sub">Nous vous envoyons un lien pour réinitialiser votre mot de passe.</div>
+      <div class="auth-form">
+        <div class="field"><label>Email</label><input type="email" id="oubli-email" placeholder="votre@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')envoyerReset()"></div>
+        <button class="btn-main" id="oubli-btn" onclick="envoyerReset()">Recevoir le lien</button>
+      </div>
+      <div class="auth-links"><button class="link-btn" onclick="showAuthView('login')">← Retour à la connexion</button></div>
+    </div>
+
+    <!-- Choix / réinitialisation du mot de passe (après clic sur le lien email) -->
+    <div id="view-setpwd" style="display:none;">
+      <div class="form-title">Choisissez votre mot de passe</div>
+      <div class="form-sub">Bienvenue ! Créez le mot de passe qui vous servira pour vos prochaines connexions.</div>
+      <div class="auth-form">
+        <div class="field"><label>Nouveau mot de passe</label><input type="password" id="new-pwd" placeholder="Au moins 6 caractères" autocomplete="new-password"></div>
+        <div class="field"><label>Confirmer</label><input type="password" id="new-pwd2" placeholder="Répétez le mot de passe" autocomplete="new-password" onkeydown="if(event.key==='Enter')definirMotDePasse()"></div>
+        <button class="btn-main" id="setpwd-btn" onclick="definirMotDePasse()">Valider et accéder à mon espace</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════ DASHBOARD ══════════ -->
+<div id="dashboard">
+  <div class="topbar">
+    <div class="brand">🐾 Les Toutous de Io</div>
+    <div class="right">
+      <span class="who" id="who"></span>
+      <button class="link-btn" onclick="seDeconnecter()">Déconnexion</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="hello" id="hello">Bonjour 🐾</div>
+    <div class="hello-sub" id="hello-sub"></div>
+
+    <div class="section">
+      <div class="section-title">🐕 Mes chiens</div>
+      <div class="cards" id="dogs-list"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">📅 Mes séjours</div>
+      <div id="resa-list"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">🎁 Ma fidélité</div>
+      <div id="fid-list"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">✨ Un nouveau séjour ?</div>
+      <div class="empty" style="text-align:left;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+        <span>Besoin de réserver de nouvelles dates pour votre compagnon ?</span>
+        <a class="btn-outline" id="new-request-btn" href="#">Faire une demande</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════
+const SUPABASE_URL = 'https://xtxekhowasjzzplkskvf.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_siYC9zq1W1LRfwgjtJ2vCg_be1Eo0-c';
+// URL du site public (pour le bouton « faire une demande »)
+const SITE_PUBLIC_URL = 'https://les-toutous-de-io.netlify.app';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let clientActuel = null; // fiche de la table clients
+
+// ═══════════════════════════════════════════════
+// AFFICHAGE DES VUES D'AUTHENTIFICATION
+// ═══════════════════════════════════════════════
+function showAuthView(view) {
+  ['login','premiere','oubli','setpwd'].forEach(v => {
+    const el = document.getElementById('view-' + v);
+    if (el) el.style.display = v === view ? 'block' : 'none';
+  });
+  hideAuthMsg();
+}
+function authMsg(text, type = 'info') {
+  const el = document.getElementById('auth-msg');
+  el.textContent = text;
+  el.className = 'auth-msg ' + type;
+}
+function hideAuthMsg() { document.getElementById('auth-msg').className = 'auth-msg'; }
+
+function showScreen(which) {
+  document.getElementById('loading-screen').style.display = which === 'loading' ? 'flex' : 'none';
+  document.getElementById('auth-screen').style.display = which === 'auth' ? 'flex' : 'none';
+  document.getElementById('dashboard').style.display = which === 'dashboard' ? 'block' : 'none';
+}
+
+function toast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast ' + type;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ═══════════════════════════════════════════════
+// VÉRIFIE QU'UN EMAIL CORRESPOND À UN CLIENT CONNU
+// ═══════════════════════════════════════════════
+async function clientExiste(email) {
+  const { data, error } = await sb.from('clients').select('id').ilike('email', email).limit(1);
+  if (error) return false;
+  return data && data.length > 0;
+}
+
+// ═══════════════════════════════════════════════
+// 1ʳᵉ CONNEXION — envoi du lien de création
+// ═══════════════════════════════════════════════
+async function envoyerLienCreation() {
+  const email = document.getElementById('premiere-email').value.trim().toLowerCase();
+  const btn = document.getElementById('premiere-btn');
+  if (!email) { authMsg('Merci d\'indiquer votre email.', 'error'); return; }
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try {
+    // Gating : seuls les clients connus peuvent créer un accès
+    if (!(await clientExiste(email))) {
+      authMsg('Aucun dossier trouvé à cet email. Contactez-nous pour être enregistré comme client.', 'error');
+      return;
+    }
+    const { error } = await sb.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: window.location.origin + window.location.pathname, shouldCreateUser: true }
+    });
+    if (error) throw error;
+    authMsg('📩 C\'est envoyé ! Ouvrez l\'email reçu à ' + email + ' et cliquez sur le lien pour créer votre mot de passe.', 'success');
+  } catch (e) {
+    authMsg('Erreur : ' + (e.message || 'réessayez plus tard.'), 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Recevoir mon lien';
+  }
+}
+
+// ═══════════════════════════════════════════════
+// CONNEXION classique
+// ═══════════════════════════════════════════════
+async function seConnecter() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const pwd = document.getElementById('login-pwd').value;
+  const btn = document.getElementById('login-btn');
+  if (!email || !pwd) { authMsg('Email et mot de passe requis.', 'error'); return; }
+  btn.disabled = true; btn.textContent = 'Connexion…';
+  try {
+    const { error } = await sb.auth.signInWithPassword({ email, password: pwd });
+    if (error) {
+      authMsg('Email ou mot de passe incorrect. Première fois ? Utilisez « Créer mon accès ».', 'error');
+      return;
+    }
+    // onAuthStateChange prend le relais
+  } finally {
+    btn.disabled = false; btn.textContent = 'Se connecter';
+  }
+}
+
+// ═══════════════════════════════════════════════
+// MOT DE PASSE OUBLIÉ
+// ═══════════════════════════════════════════════
+async function envoyerReset() {
+  const email = document.getElementById('oubli-email').value.trim().toLowerCase();
+  const btn = document.getElementById('oubli-btn');
+  if (!email) { authMsg('Merci d\'indiquer votre email.', 'error'); return; }
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try {
+    const { error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname
+    });
+    if (error) throw error;
+    authMsg('📩 Si un compte existe, un lien de réinitialisation vient d\'être envoyé à ' + email + '.', 'success');
+  } catch (e) {
+    authMsg('Erreur : ' + (e.message || 'réessayez plus tard.'), 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Recevoir le lien';
+  }
+}
+
+// ═══════════════════════════════════════════════
+// DÉFINIR LE MOT DE PASSE (après clic sur le lien email)
+// ═══════════════════════════════════════════════
+async function definirMotDePasse() {
+  const p1 = document.getElementById('new-pwd').value;
+  const p2 = document.getElementById('new-pwd2').value;
+  const btn = document.getElementById('setpwd-btn');
+  if (p1.length < 6) { authMsg('Le mot de passe doit faire au moins 6 caractères.', 'error'); return; }
+  if (p1 !== p2) { authMsg('Les deux mots de passe ne correspondent pas.', 'error'); return; }
+  btn.disabled = true; btn.textContent = 'Enregistrement…';
+  try {
+    const { error } = await sb.auth.updateUser({ password: p1, data: { password_set: true } });
+    if (error) throw error;
+    toast('✅ Mot de passe enregistré !', 'success');
+    await entrerDashboard();
+  } catch (e) {
+    authMsg('Erreur : ' + (e.message || 'réessayez.'), 'error');
+    btn.disabled = false; btn.textContent = 'Valider et accéder à mon espace';
+  }
+}
+
+// ═══════════════════════════════════════════════
+// DÉCONNEXION
+// ═══════════════════════════════════════════════
+async function seDeconnecter() {
+  await sb.auth.signOut();
+  clientActuel = null;
+  showScreen('auth');
+  showAuthView('login');
+}
+
+// ═══════════════════════════════════════════════
+// UTILITAIRES
+// ═══════════════════════════════════════════════
+function formatDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+function labelService(s) {
+  return { pension: 'Pension', randonnee: 'Randonnée', visite: 'Visite', balade: 'Balade' }[s] || s || 'Séjour';
+}
+function getChiens(obj) {
+  let c = obj && obj.chiens_json;
+  if (typeof c === 'string') { try { c = JSON.parse(c); } catch(e) { c = null; } }
+  return Array.isArray(c) && c.length ? c : null;
+}
+
+// ═══════════════════════════════════════════════
+// CHARGEMENT DU DASHBOARD
+// ═══════════════════════════════════════════════
+async function entrerDashboard() {
+  showScreen('loading');
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) { showScreen('auth'); showAuthView('login'); return; }
+  const email = user.email;
+
+  // Retrouver la fiche client
+  const { data: clients } = await sb.from('clients').select('*').ilike('email', email).limit(1);
+  clientActuel = clients && clients[0] ? clients[0] : null;
+
+  if (!clientActuel) {
+    // Compte authentifié mais pas encore de dossier client
+    showScreen('dashboard');
+    document.getElementById('who').textContent = email;
+    document.getElementById('hello').textContent = 'Bonjour 🐾';
+    document.getElementById('hello-sub').textContent = '';
+    document.getElementById('dogs-list').innerHTML = '';
+    document.getElementById('resa-list').innerHTML = `<div class="empty"><div class="e-icon">📋</div>Votre dossier client n'est pas encore finalisé.<br>Nous vous recontactons très vite !</div>`;
+    document.getElementById('fid-list').innerHTML = '';
+    document.getElementById('new-request-btn').href = SITE_PUBLIC_URL;
+    return;
+  }
+
+  // Charger séjours + fidélité en parallèle
+  const [{ data: resas }, { data: fids }] = await Promise.all([
+    sb.from('reservations').select('*').eq('client_id', clientActuel.id).order('date_debut', { ascending: false }),
+    sb.from('fidelite').select('*').eq('client_id', clientActuel.id).order('chien_nom', { ascending: true })
+  ]);
+
+  rendreDashboard(clientActuel, resas || [], fids || []);
+  showScreen('dashboard');
+}
+
+function rendreDashboard(client, resas, fids) {
+  document.getElementById('who').textContent = client.email;
+  document.getElementById('hello').textContent = `Bonjour ${client.prenom || ''} 🐾`;
+  document.getElementById('hello-sub').textContent = 'Bienvenue dans votre espace personnel.';
+  document.getElementById('new-request-btn').href = SITE_PUBLIC_URL;
+
+  // ── Chiens : agrégés depuis les séjours (chiens_json) + cartes fidélité ──
+  const chiensMap = new Map();
+  resas.forEach(r => (getChiens(r) || []).forEach(c => {
+    if (c.nom && !chiensMap.has(c.nom.toLowerCase())) chiensMap.set(c.nom.toLowerCase(), c);
+  }));
+  fids.forEach(f => { if (f.chien_nom && !chiensMap.has(f.chien_nom.toLowerCase())) chiensMap.set(f.chien_nom.toLowerCase(), { nom: f.chien_nom }); });
+  const dogs = [...chiensMap.values()];
+  const dogsDiv = document.getElementById('dogs-list');
+  dogsDiv.innerHTML = dogs.length
+    ? dogs.map(c => `<div class="card dog"><span class="dog-emoji">🐕</span><div><div class="dog-name">${c.nom}</div><div class="dog-meta">${[c.race, c.age].filter(Boolean).join(' · ') || 'Votre compagnon'}</div></div></div>`).join('')
+    : `<div class="empty"><div class="e-icon">🐾</div>Aucun chien enregistré pour l'instant.</div>`;
+
+  // ── Séjours ──
+  const today = new Date().toISOString().split('T')[0];
+  const resaDiv = document.getElementById('resa-list');
+  if (!resas.length) {
+    resaDiv.innerHTML = `<div class="empty"><div class="e-icon">📅</div>Aucun séjour pour le moment.</div>`;
+  } else {
+    resaDiv.innerHTML = resas.map(r => {
+      const aVenir = r.date_debut && r.date_debut >= today;
+      const noms = (getChiens(r) || []).map(c => c.nom).filter(Boolean).join(', ') || r.chien_nom || '';
+      const badge = r.statut === 'confirme'
+        ? (aVenir ? '<span class="badge a_venir">À venir</span>' : '<span class="badge passe">Terminé</span>')
+        : `<span class="badge confirme">${r.statut || ''}</span>`;
+      return `<div class="resa">
+        <div>
+          <div class="resa-dates">${formatDate(r.date_debut)}${r.date_fin ? ' → ' + formatDate(r.date_fin) : ''}</div>
+          <div class="resa-meta">${labelService(r.service)}${noms ? ' · ' + noms : ''}</div>
+        </div>
+        <div style="text-align:right;">
+          ${badge}
+          ${r.montant_total ? `<div class="resa-amount">${r.montant_total} €</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Fidélité ──
+  const fidDiv = document.getElementById('fid-list');
+  if (!fids.length) {
+    fidDiv.innerHTML = `<div class="empty"><div class="e-icon">🎁</div>Votre carte de fidélité se remplira au fil des séjours.<br><span style="font-size:0.8rem;">1 jour offert tous les 12 jours de pension, par chien.</span></div>`;
+  } else {
+    fidDiv.innerHTML = fids.map(f => {
+      const cycle = (f.jours_cumules || 0) % 12;
+      const restant = 12 - cycle;
+      const dispo = (f.jours_offerts_total || 0) - (f.jours_offerts_utilises || 0);
+      const pct = Math.round(cycle / 12 * 100);
+      return `<div class="fid">
+        <div class="fid-top">
+          <span class="fid-dog">🐾 ${f.chien_nom}</span>
+          <span class="fid-count">${f.jours_cumules || 0} jours cumulés</span>
+        </div>
+        <div class="fid-bar"><div class="fid-fill" style="width:${pct}%;"></div></div>
+        <div class="fid-note">Cycle ${cycle}/12 · encore ${restant} jour${restant > 1 ? 's' : ''} avant un jour offert</div>
+        ${dispo > 0 ? `<div class="fid-offert">🎁 ${dispo} jour${dispo > 1 ? 's' : ''} offert${dispo > 1 ? 's' : ''} disponible${dispo > 1 ? 's' : ''} !</div>` : ''}
+      </div>`;
+    }).join('');
+  }
+}
+
+// ═══════════════════════════════════════════════
+// GESTION DE LA SESSION / LIENS EMAIL
+// ═══════════════════════════════════════════════
+// Un utilisateur arrivant via un lien email (création ou reset) doit
+// définir son mot de passe. On stocke un drapeau le temps de la bascule.
+let attendPasswordSetup = false;
+
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    // Clic sur le lien « mot de passe oublié »
+    attendPasswordSetup = true;
+    showScreen('auth');
+    showAuthView('setpwd');
+    return;
+  }
+  if (event === 'SIGNED_IN' && session) {
+    const passwordSet = session.user?.user_metadata?.password_set === true;
+    if (!passwordSet) {
+      // Première connexion via lien email → choisir le mot de passe
+      attendPasswordSetup = true;
+      showScreen('auth');
+      showAuthView('setpwd');
+      return;
+    }
+    if (!attendPasswordSetup) await entrerDashboard();
+    return;
+  }
+  if (event === 'SIGNED_OUT') {
+    showScreen('auth');
+    showAuthView('login');
+  }
+});
+
+// Au chargement : session existante ?
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  // Si l'URL contient un lien de récupération/création, onAuthStateChange gère l'affichage.
+  const hash = window.location.hash || '';
+  const isRecovery = hash.includes('type=recovery');
+  if (session && !isRecovery) {
+    const passwordSet = session.user?.user_metadata?.password_set === true;
+    if (passwordSet) { await entrerDashboard(); return; }
+    // session issue d'un lien mais mot de passe pas encore défini
+    showScreen('auth'); showAuthView('setpwd'); return;
+  }
+  if (!session) { showScreen('auth'); showAuthView('login'); }
+})();
+</script>
+</body>
+</html>
