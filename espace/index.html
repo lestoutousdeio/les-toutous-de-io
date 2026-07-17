@@ -115,6 +115,39 @@
   .toast.show { transform: translateY(0); opacity: 1; }
   .toast.error { background: var(--danger); }
   .toast.success { background: var(--success); }
+
+  /* ── CARTE CHIEN modifiable ── */
+  .card.dog { flex-direction: column; align-items: stretch; gap: 0.75rem; }
+  .dog-head { display: flex; align-items: center; gap: 0.9rem; }
+  .dog-actions { display: flex; gap: 0.5rem; margin-top: 0.25rem; }
+  .mini-btn { flex: 1; background: var(--gris-light); color: var(--texte); border: none; border-radius: 8px; padding: 0.45rem; font-size: 0.78rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .mini-btn:hover { background: var(--gris-border); }
+  .mini-btn.danger { color: var(--danger); }
+  .mini-btn.danger:hover { background: #FEF2F2; }
+  .card.add-dog { border: 2px dashed var(--gris-border); background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; min-height: 90px; color: var(--foret); font-weight: 600; font-size: 0.9rem; transition: all 0.2s; }
+  .card.add-dog:hover { border-color: var(--foret); background: rgba(45,80,22,0.03); }
+  .dog-detail { font-size: 0.78rem; color: var(--gris); line-height: 1.5; }
+  .vaccin-ok { color: var(--success); font-weight: 600; }
+  .vaccin-no { color: var(--danger); font-weight: 600; }
+
+  /* ── MODAL ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 250; align-items: center; justify-content: center; padding: 1rem; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: white; border-radius: 16px; padding: 1.75rem; max-width: 500px; width: 100%; max-height: 92vh; overflow-y: auto; }
+  .modal h3 { font-family: 'Playfair Display', serif; font-size: 1.3rem; color: var(--foret); margin-bottom: 0.35rem; }
+  .modal .modal-sub { font-size: 0.82rem; color: var(--gris); margin-bottom: 1.25rem; line-height: 1.5; }
+  .modal .field { margin-bottom: 0.9rem; }
+  .modal .field textarea { width: 100%; border: 1.5px solid var(--gris-border); border-radius: 9px; padding: 0.6rem 0.85rem; font-size: 0.9rem; font-family: inherit; outline: none; resize: vertical; min-height: 56px; }
+  .modal .field textarea:focus, .modal .field select:focus { border-color: var(--foret); }
+  .modal .field select { width: 100%; border: 1.5px solid var(--gris-border); border-radius: 9px; padding: 0.65rem 0.85rem; font-size: 0.9rem; font-family: inherit; outline: none; background: white; }
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  @media (max-width: 480px) { .row-2 { grid-template-columns: 1fr; } }
+  .check-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; padding: 0.35rem 0; }
+  .check-row input { width: 17px; height: 17px; accent-color: var(--foret); }
+  .modal-actions { display: flex; gap: 0.75rem; margin-top: 1.25rem; }
+  .modal-actions .btn-main { flex: 1; }
+  .btn-cancel { background: var(--gris-light); color: var(--texte); border: none; border-radius: 10px; padding: 0.85rem 1.25rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .warn-males { background: #FFF5F5; border: 1px solid #FECACA; border-radius: 8px; padding: 0.6rem 0.8rem; font-size: 0.78rem; color: var(--danger); margin-bottom: 0.9rem; }
 </style>
 </head>
 <body>
@@ -220,6 +253,46 @@
   </div>
 </div>
 
+<!-- ══════════ MODALE FICHE CHIEN ══════════ -->
+<div class="modal-overlay" id="modal-chien">
+  <div class="modal">
+    <h3 id="chien-modal-titre">Ajouter un chien</h3>
+    <div class="modal-sub">Ces informations aident Iolana à accueillir au mieux votre compagnon.</div>
+
+    <div class="warn-males">⚠️ Nous n'accueillons pas les mâles non castrés.</div>
+
+    <div class="row-2">
+      <div class="field"><label>Prénom du chien *</label><input type="text" id="ch-nom" placeholder="Ex : Filou"></div>
+      <div class="field"><label>Race</label><input type="text" id="ch-race" placeholder="Ex : Labrador"></div>
+    </div>
+    <div class="row-2">
+      <div class="field"><label>Âge</label><input type="text" id="ch-age" placeholder="Ex : 3 ans"></div>
+      <div class="field"><label>Poids (kg)</label><input type="number" id="ch-poids" placeholder="Ex : 25" step="0.1" min="0"></div>
+    </div>
+    <div class="field">
+      <label>Sexe</label>
+      <select id="ch-sexe">
+        <option value="">— Sélectionner —</option>
+        <option value="femelle">Femelle</option>
+        <option value="male_castre">Mâle castré</option>
+      </select>
+    </div>
+    <div class="field"><label>Alimentation</label><textarea id="ch-alim" placeholder="Type de croquettes, quantité, fréquence…"></textarea></div>
+    <div class="field"><label>Médicaments / traitements</label><textarea id="ch-medic" placeholder="Aucun, ou détails…"></textarea></div>
+    <div class="field"><label>Allergies</label><input type="text" id="ch-allergies" placeholder="Aucune, ou lesquelles…"></div>
+    <div class="field"><label>Habitudes / à savoir</label><textarea id="ch-habitudes" placeholder="Peurs, caractère, habitudes…"></textarea></div>
+    <label class="check-row"><input type="checkbox" id="ch-vaccins"> Vaccins à jour</label>
+    <label class="check-row"><input type="checkbox" id="ch-toux"> Vacciné contre la toux du chenil</label>
+
+    <div class="auth-msg" id="chien-msg" style="margin-top:0.75rem;"></div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="fermerFicheChien()">Annuler</button>
+      <button class="btn-main" id="chien-save-btn" onclick="enregistrerChien()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -234,6 +307,7 @@ const SITE_PUBLIC_URL = 'https://les-toutous-de-io.netlify.app';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let clientActuel = null; // fiche de la table clients
+let mesChiens = [];      // chiens du client (table chiens)
 
 // ═══════════════════════════════════════════════
 // AFFICHAGE DES VUES D'AUTHENTIFICATION
@@ -416,11 +490,13 @@ async function entrerDashboard() {
     return;
   }
 
-  // Charger séjours + fidélité en parallèle
-  const [{ data: resas }, { data: fids }] = await Promise.all([
+  // Charger chiens + séjours + fidélité en parallèle
+  const [{ data: chiens }, { data: resas }, { data: fids }] = await Promise.all([
+    sb.from('chiens').select('*').eq('client_id', clientActuel.id).order('created_at', { ascending: true }),
     sb.from('reservations').select('*').eq('client_id', clientActuel.id).order('date_debut', { ascending: false }),
     sb.from('fidelite').select('*').eq('client_id', clientActuel.id).order('chien_nom', { ascending: true })
   ]);
+  mesChiens = chiens || [];
 
   rendreDashboard(clientActuel, resas || [], fids || []);
   showScreen('dashboard');
@@ -432,17 +508,8 @@ function rendreDashboard(client, resas, fids) {
   document.getElementById('hello-sub').textContent = 'Bienvenue dans votre espace personnel.';
   document.getElementById('new-request-btn').href = SITE_PUBLIC_URL;
 
-  // ── Chiens : agrégés depuis les séjours (chiens_json) + cartes fidélité ──
-  const chiensMap = new Map();
-  resas.forEach(r => (getChiens(r) || []).forEach(c => {
-    if (c.nom && !chiensMap.has(c.nom.toLowerCase())) chiensMap.set(c.nom.toLowerCase(), c);
-  }));
-  fids.forEach(f => { if (f.chien_nom && !chiensMap.has(f.chien_nom.toLowerCase())) chiensMap.set(f.chien_nom.toLowerCase(), { nom: f.chien_nom }); });
-  const dogs = [...chiensMap.values()];
-  const dogsDiv = document.getElementById('dogs-list');
-  dogsDiv.innerHTML = dogs.length
-    ? dogs.map(c => `<div class="card dog"><span class="dog-emoji">🐕</span><div><div class="dog-name">${c.nom}</div><div class="dog-meta">${[c.race, c.age].filter(Boolean).join(' · ') || 'Votre compagnon'}</div></div></div>`).join('')
-    : `<div class="empty"><div class="e-icon">🐾</div>Aucun chien enregistré pour l'instant.</div>`;
+  // ── Chiens : fiches gérées par le client (table chiens) ──
+  rendreChiens();
 
   // ── Séjours ──
   const today = new Date().toISOString().split('T')[0];
@@ -491,6 +558,115 @@ function rendreDashboard(client, resas, fids) {
     }).join('');
   }
 }
+
+// ═══════════════════════════════════════════════
+// MES CHIENS (gérés par le client)
+// ═══════════════════════════════════════════════
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+}
+function labelSexe(s) { return s === 'femelle' ? '♀ Femelle' : s === 'male_castre' ? '♂ Mâle castré' : '—'; }
+
+function rendreChiens() {
+  const div = document.getElementById('dogs-list');
+  const cards = mesChiens.map(c => {
+    const meta = [c.race, c.age, c.poids_kg ? c.poids_kg + ' kg' : null].filter(Boolean).join(' · ');
+    const vaccin = c.vaccins_a_jour ? '<span class="vaccin-ok">✓ Vaccins à jour</span>' : '<span class="vaccin-no">⚠ Vaccins à vérifier</span>';
+    return `<div class="card dog">
+      <div class="dog-head">
+        <span class="dog-emoji">🐕</span>
+        <div><div class="dog-name">${esc(c.nom)}</div><div class="dog-meta">${esc(meta) || 'Votre compagnon'}</div></div>
+      </div>
+      <div class="dog-detail">${labelSexe(c.sexe)} · ${vaccin}</div>
+      <div class="dog-actions">
+        <button class="mini-btn" onclick="ouvrirFicheChien('${c.id}')">Modifier</button>
+        <button class="mini-btn danger" onclick="supprimerChien('${c.id}')">Supprimer</button>
+      </div>
+    </div>`;
+  }).join('');
+  div.innerHTML = cards + `<div class="card add-dog" onclick="ouvrirFicheChien()">+ Ajouter un chien</div>`;
+}
+
+let chienEnEdition = null; // id du chien édité, ou null pour un nouveau
+
+function ouvrirFicheChien(id) {
+  chienEnEdition = id || null;
+  const c = id ? mesChiens.find(x => x.id === id) : {};
+  document.getElementById('chien-modal-titre').textContent = id ? 'Modifier la fiche' : 'Ajouter un chien';
+  document.getElementById('ch-nom').value = c.nom || '';
+  document.getElementById('ch-race').value = c.race || '';
+  document.getElementById('ch-age').value = c.age || '';
+  document.getElementById('ch-poids').value = c.poids_kg ?? '';
+  document.getElementById('ch-sexe').value = c.sexe || '';
+  document.getElementById('ch-alim').value = c.alimentation || '';
+  document.getElementById('ch-medic').value = c.medicaments || '';
+  document.getElementById('ch-allergies').value = c.allergies || '';
+  document.getElementById('ch-habitudes').value = c.habitudes || '';
+  document.getElementById('ch-vaccins').checked = !!c.vaccins_a_jour;
+  document.getElementById('ch-toux').checked = !!c.vaccin_toux_chenil;
+  document.getElementById('chien-msg').className = 'auth-msg';
+  document.getElementById('modal-chien').classList.add('open');
+}
+function fermerFicheChien() { document.getElementById('modal-chien').classList.remove('open'); }
+
+async function enregistrerChien() {
+  const nom = document.getElementById('ch-nom').value.trim();
+  const msg = document.getElementById('chien-msg');
+  if (!nom) { msg.textContent = 'Le prénom du chien est obligatoire.'; msg.className = 'auth-msg error'; return; }
+  const poidsRaw = document.getElementById('ch-poids').value;
+  const payload = {
+    client_id: clientActuel.id,
+    nom,
+    race: document.getElementById('ch-race').value.trim() || null,
+    age: document.getElementById('ch-age').value.trim() || null,
+    poids_kg: poidsRaw !== '' ? parseFloat(poidsRaw) : null,
+    sexe: document.getElementById('ch-sexe').value || null,
+    alimentation: document.getElementById('ch-alim').value.trim() || null,
+    medicaments: document.getElementById('ch-medic').value.trim() || null,
+    allergies: document.getElementById('ch-allergies').value.trim() || null,
+    habitudes: document.getElementById('ch-habitudes').value.trim() || null,
+    vaccins_a_jour: document.getElementById('ch-vaccins').checked,
+    vaccin_toux_chenil: document.getElementById('ch-toux').checked
+  };
+  const btn = document.getElementById('chien-save-btn');
+  btn.disabled = true; btn.textContent = 'Enregistrement…';
+  try {
+    if (chienEnEdition) {
+      const { error } = await sb.from('chiens').update(payload).eq('id', chienEnEdition);
+      if (error) throw error;
+      const idx = mesChiens.findIndex(x => x.id === chienEnEdition);
+      if (idx > -1) mesChiens[idx] = { ...mesChiens[idx], ...payload };
+    } else {
+      const { data, error } = await sb.from('chiens').insert(payload).select();
+      if (error) throw error;
+      if (data && data[0]) mesChiens.push(data[0]);
+    }
+    fermerFicheChien();
+    rendreChiens();
+    toast('✅ Fiche enregistrée', 'success');
+  } catch (e) {
+    msg.textContent = 'Erreur : ' + (e.message || 'réessayez.'); msg.className = 'auth-msg error';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Enregistrer';
+  }
+}
+
+async function supprimerChien(id) {
+  const c = mesChiens.find(x => x.id === id);
+  if (!confirm(`Supprimer la fiche de ${c ? c.nom : 'ce chien'} ?`)) return;
+  try {
+    const { error } = await sb.from('chiens').delete().eq('id', id);
+    if (error) throw error;
+    mesChiens = mesChiens.filter(x => x.id !== id);
+    rendreChiens();
+    toast('Fiche supprimée');
+  } catch (e) { toast('Erreur : ' + (e.message || ''), 'error'); }
+}
+
+// Fermer la modale en cliquant à l'extérieur
+document.getElementById('modal-chien').addEventListener('click', e => {
+  if (e.target.id === 'modal-chien') fermerFicheChien();
+});
 
 // ═══════════════════════════════════════════════
 // GESTION DE LA SESSION / LIENS EMAIL
