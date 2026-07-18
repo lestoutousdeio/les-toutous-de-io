@@ -610,7 +610,7 @@
     <div class="form-row-2">
       <div class="form-group">
         <label>Service</label>
-        <select id="nd-service">
+        <select id="nd-service" onchange="adapterFormulaireDemande()">
           <option value="pension">Pension</option>
           <option value="randonnee">Randonnée</option>
           <option value="visite">Visite domicile</option>
@@ -620,8 +620,8 @@
       <div class="form-group"><label>Nb chiens</label><input type="number" id="nd-nb" value="1" min="1" max="4"></div>
     </div>
     <div class="form-row-2">
-      <div class="form-group"><label>Date début</label><input type="date" id="nd-debut"></div>
-      <div class="form-group"><label>Date fin</label><input type="date" id="nd-fin"></div>
+      <div class="form-group"><label id="nd-label-debut">Date d'arrivée *</label><input type="date" id="nd-debut"></div>
+      <div class="form-group" id="nd-groupe-fin"><label>Date de départ</label><input type="date" id="nd-fin"></div>
     </div>
     <div class="form-group"><label>Message / infos</label><textarea id="nd-message" placeholder="Notes…" rows="2"></textarea></div>
     <div class="modal-actions">
@@ -1149,6 +1149,11 @@ async function confirmerAcceptation() {
 async function confirmerVirement(id) {
   const d = allDemandes.find(x => x.id === id);
   if (!d) return;
+  // Garde-fou : sans date, la réservation ne peut pas être créée
+  if (!d.date_debut) {
+    showToast('Cette demande n\'a pas de date. Complète-la avant de confirmer.', 'error');
+    return;
+  }
   const joursFidelite = d.jours_fidelite || 0;
   const montantTotal = d.montant_total || 0;
   const montantAcompte = d.montant_acompte || 0;
@@ -1252,6 +1257,20 @@ async function mettreAJourFidelite(clientId, chienNom, joursAjouter) {
 // ═══════════════════════════════════════════════════
 // NOUVELLE DEMANDE MANUELLE
 // ═══════════════════════════════════════════════════
+// Une pension a un séjour (arrivée → départ) ; les autres services ont une seule date
+function adapterFormulaireDemande() {
+  const service = document.getElementById('nd-service').value;
+  const estPension = service === 'pension';
+  document.getElementById('nd-label-debut').textContent = estPension
+    ? "Date d'arrivée *"
+    : (service === 'randonnee' ? 'Date de la sortie *' : 'Date *');
+  document.getElementById('nd-groupe-fin').style.display = estPension ? 'block' : 'none';
+  if (!estPension) document.getElementById('nd-fin').value = '';
+  // Le nombre de chiens n'a de sens que pour la pension et la randonnée
+  const nbGroupe = document.getElementById('nd-nb')?.closest('.form-group');
+  if (nbGroupe) nbGroupe.style.display = (estPension || service === 'randonnee') ? 'block' : 'none';
+}
+
 async function creerDemande() {
   const body = {
     prenom_contact: document.getElementById('nd-prenom').value,
@@ -1268,6 +1287,11 @@ async function creerDemande() {
     statut: 'en_attente'
   };
   if (!body.prenom_contact || !body.email_contact) { showToast('Prénom et email obligatoires', 'error'); return; }
+  // Une date est indispensable : sans elle, la réservation ne peut pas être créée
+  if (!body.date_debut) {
+    showToast(body.service === 'pension' ? 'La date d\'arrivée est obligatoire' : 'La date est obligatoire', 'error');
+    return;
+  }
   try {
     await sb('demandes', { method: 'POST', body });
     allDemandes = await sb('demandes?order=created_at.desc');
@@ -1833,12 +1857,26 @@ function demarrerAdmin() {
 // EMAILJS FONCTIONS
 // ═══════════════════════════════════════════════════
 
+// Phrase adaptée au service : une randonnée n'est pas un séjour « du … au … »
+function phraseSejour(demande) {
+  const service = serviceDe(demande);
+  const debut = formatDate(demande.date_debut);
+  if (service === 'pension') {
+    return demande.date_fin ? `du ${debut} au ${formatDate(demande.date_fin)}` : `à partir du ${debut}`;
+  }
+  if (service === 'randonnee') return `pour la randonnée du ${debut}`;
+  return `pour la ${labelService(service).toLowerCase()} du ${debut}`;
+}
+
 async function envoyerEmailAcceptation(demande) {
   try {
     await emailjs.send('service_r8y448c', 'garde_acceptee', {
       email: demande.email_contact || '',
       prenom: demande.prenom_contact || '',
       chien_nom: (getChiens(demande) || []).map(c => c.nom).filter(Boolean).join(', ') || demande.chien_nom || '',
+      // « sejour » remplace le couple date_debut/date_fin dans le texte du mail
+      sejour: phraseSejour(demande),
+      service: labelService(serviceDe(demande)),
       date_debut: formatDate(demande.date_debut),
       date_fin: formatDate(demande.date_fin),
       montant_total: demande.montant_total || '',
