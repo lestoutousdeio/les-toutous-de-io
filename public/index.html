@@ -1059,8 +1059,10 @@ function renderChiensForms() {
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>Âge</label>
-            <input type="text" id="chien-age-${i}" placeholder="Ex : 3 ans">
+            <label>Date de naissance</label>
+            <input type="date" id="chien-naissance-${i}" max="${new Date().toISOString().split('T')[0]}"
+                   oninput="majAgeChien(${i})">
+            <div id="chien-age-apercu-${i}" style="font-size:0.75rem;color:var(--foret);margin-top:0.25rem;font-weight:600;"></div>
           </div>
           <div class="form-group">
             <label>Poids approximatif</label>
@@ -1088,6 +1090,27 @@ function renderChiensForms() {
         </div>
       </div>`;
   }
+}
+
+// ============= ÂGE À PARTIR DE LA DATE DE NAISSANCE =============
+// On stocke la date de naissance : l'âge se recalcule et ne périme jamais.
+function calculerAge(dateNaissance) {
+  if (!dateNaissance) return null;
+  const n = new Date(dateNaissance + 'T00:00:00');
+  if (isNaN(n)) return null;
+  const now = new Date();
+  let mois = (now.getFullYear() - n.getFullYear()) * 12 + (now.getMonth() - n.getMonth());
+  if (now.getDate() < n.getDate()) mois--;
+  if (mois < 0) return null;
+  if (mois < 24) return `${mois} mois`;
+  return `${Math.floor(mois / 12)} ans`;
+}
+
+function majAgeChien(i) {
+  const el = document.getElementById(`chien-age-apercu-${i}`);
+  if (!el) return;
+  const age = calculerAge(document.getElementById(`chien-naissance-${i}`)?.value);
+  el.textContent = age ? `🎂 ${age}` : '';
 }
 
 // ============= NAVIGATION =============
@@ -1539,7 +1562,8 @@ async function submitBooking() {
     chiens.push({
       nom: document.getElementById(`chien-nom-${i}`)?.value.trim() || '',
       race: document.getElementById(`chien-race-${i}`)?.value.trim() || '',
-      age: document.getElementById(`chien-age-${i}`)?.value.trim() || '',
+      naissance: document.getElementById(`chien-naissance-${i}`)?.value || '',
+      age: calculerAge(document.getElementById(`chien-naissance-${i}`)?.value) || '',
       poids: document.getElementById(`chien-poids-${i}`)?.value.trim() || '',
       sexe: document.getElementById(`chien-sexe-${i}`)?.value || '',
       infos: document.getElementById(`chien-infos-${i}`)?.value.trim() || ''

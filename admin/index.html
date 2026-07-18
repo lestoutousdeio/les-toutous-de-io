@@ -1562,6 +1562,24 @@ function labelSexe(s) {
   return s === 'femelle' ? '♀ Femelle' : s === 'male_castre' ? '♂ Mâle castré' : '—';
 }
 
+// Âge recalculé depuis la date de naissance (jamais périmé),
+// avec repli sur l'ancienne saisie libre pour les fiches déjà enregistrées.
+function calculerAge(dateNaissance) {
+  if (!dateNaissance) return null;
+  const n = new Date(dateNaissance + 'T00:00:00');
+  if (isNaN(n)) return null;
+  const now = new Date();
+  let mois = (now.getFullYear() - n.getFullYear()) * 12 + (now.getMonth() - n.getMonth());
+  if (now.getDate() < n.getDate()) mois--;
+  if (mois < 0) return null;
+  if (mois < 24) return `${mois} mois`;
+  return `${Math.floor(mois / 12)} ans`;
+}
+
+function ageChien(c) {
+  return calculerAge(c.naissance || c.date_naissance) || c.age || '—';
+}
+
 function blocsChiens(d) {
   const chiens = getChiens(d);
   if (!chiens) {
@@ -1577,7 +1595,7 @@ function blocsChiens(d) {
         🐾 ${chiens.length > 1 ? `Chien ${i+1}` : 'Chien'} — ${c.nom || '—'}
       </div>
       <div class="info-row" style="padding:0.35rem 0;"><span class="ir-label">Race</span><span class="ir-value">${c.race || '—'}</span></div>
-      <div class="info-row" style="padding:0.35rem 0;"><span class="ir-label">Âge</span><span class="ir-value">${c.age || '—'}</span></div>
+      <div class="info-row" style="padding:0.35rem 0;"><span class="ir-label">Âge</span><span class="ir-value">${ageChien(c)}</span></div>
       <div class="info-row" style="padding:0.35rem 0;"><span class="ir-label">Poids</span><span class="ir-value">${c.poids || '—'}</span></div>
       <div class="info-row" style="padding:0.35rem 0;"><span class="ir-label">Sexe</span><span class="ir-value">${labelSexe(c.sexe)}</span></div>
       ${c.infos ? `<div class="info-row" style="padding:0.35rem 0;"><span class="ir-label">Infos</span><span class="ir-value" style="max-width:240px;word-break:break-word;">${c.infos}</span></div>` : ''}

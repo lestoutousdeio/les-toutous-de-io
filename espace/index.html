@@ -266,7 +266,11 @@
       <div class="field"><label>Race</label><input type="text" id="ch-race" placeholder="Ex : Labrador"></div>
     </div>
     <div class="row-2">
-      <div class="field"><label>Âge</label><input type="text" id="ch-age" placeholder="Ex : 3 ans"></div>
+      <div class="field">
+        <label>Date de naissance</label>
+        <input type="date" id="ch-naissance" max="" onchange="majApercuAge()">
+        <div id="ch-age-apercu" style="font-size:0.78rem;color:var(--foret);margin-top:0.3rem;font-weight:600;"></div>
+      </div>
       <div class="field"><label>Poids (kg)</label><input type="number" id="ch-poids" placeholder="Ex : 25" step="0.1" min="0"></div>
     </div>
     <div class="field">
@@ -558,10 +562,34 @@ function esc(s) {
 }
 function labelSexe(s) { return s === 'femelle' ? '♀ Femelle' : s === 'male_castre' ? '♂ Mâle castré' : '—'; }
 
+// Âge recalculé à chaque affichage — plus jamais périmé
+function calculerAge(dateNaissance) {
+  if (!dateNaissance) return null;
+  const n = new Date(dateNaissance + 'T00:00:00');
+  if (isNaN(n)) return null;
+  const now = new Date();
+  let mois = (now.getFullYear() - n.getFullYear()) * 12 + (now.getMonth() - n.getMonth());
+  if (now.getDate() < n.getDate()) mois--;
+  if (mois < 0) return null;
+  if (mois < 24) return `${mois} mois`;
+  return `${Math.floor(mois / 12)} ans`;
+}
+
+// Âge à afficher : calculé si on a la date, sinon l'ancienne saisie libre
+function ageAffiche(c) {
+  return calculerAge(c.date_naissance) || c.age || null;
+}
+
+function majApercuAge() {
+  const v = document.getElementById('ch-naissance').value;
+  const age = calculerAge(v);
+  document.getElementById('ch-age-apercu').textContent = age ? `🎂 ${age}` : '';
+}
+
 function rendreChiens() {
   const div = document.getElementById('dogs-list');
   const cards = mesChiens.map(c => {
-    const meta = [c.race, c.age, c.poids_kg ? c.poids_kg + ' kg' : null].filter(Boolean).join(' · ');
+    const meta = [c.race, ageAffiche(c), c.poids_kg ? c.poids_kg + ' kg' : null].filter(Boolean).join(' · ');
     const vaccin = c.vaccins_a_jour ? '<span class="vaccin-ok">✓ Vaccins à jour</span>' : '<span class="vaccin-no">⚠ Vaccins à vérifier</span>';
     return `<div class="card dog">
       <div class="dog-head">
@@ -586,7 +614,9 @@ function ouvrirFicheChien(id) {
   document.getElementById('chien-modal-titre').textContent = id ? 'Modifier la fiche' : 'Ajouter un chien';
   document.getElementById('ch-nom').value = c.nom || '';
   document.getElementById('ch-race').value = c.race || '';
-  document.getElementById('ch-age').value = c.age || '';
+  document.getElementById('ch-naissance').value = c.date_naissance || '';
+  document.getElementById('ch-naissance').max = new Date().toISOString().split('T')[0]; // pas de naissance future
+  majApercuAge();
   document.getElementById('ch-poids').value = c.poids_kg ?? '';
   document.getElementById('ch-sexe').value = c.sexe || '';
   document.getElementById('ch-alim').value = c.alimentation || '';
@@ -609,7 +639,7 @@ async function enregistrerChien() {
     client_id: clientActuel.id,
     nom,
     race: document.getElementById('ch-race').value.trim() || null,
-    age: document.getElementById('ch-age').value.trim() || null,
+    date_naissance: document.getElementById('ch-naissance').value || null,
     poids_kg: poidsRaw !== '' ? parseFloat(poidsRaw) : null,
     sexe: document.getElementById('ch-sexe').value || null,
     alimentation: document.getElementById('ch-alim').value.trim() || null,
