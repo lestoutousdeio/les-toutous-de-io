@@ -748,7 +748,7 @@
           <span class="s-name">Pension</span>
           <span class="s-price">Nuit(s)</span>
         </div>
-        <div class="service-option" onclick="selectService(this, 'rando')" data-service="rando">
+        <div class="service-option" onclick="selectService(this, 'randonnee')" data-service="randonnee">
           <span class="s-icon">🏔️</span>
           <span class="s-name">Randonnée</span>
           <span class="s-price">Matin · 2h</span>
@@ -1117,7 +1117,7 @@ function selectService(el, service) {
 
 // ============= SUMMARY =============
 function updateSummary() {
-  const serviceNames = { pension: 'Pension familiale', rando: 'Randonnée montagne', visite: 'Visite domicile', balade: 'Balade (1h)' };
+  const serviceNames = { pension: 'Pension familiale', randonnee: 'Randonnée montagne', visite: 'Visite domicile', balade: 'Balade (1h)' };
   document.getElementById('sum-service').textContent = serviceNames[selectedService] || 'Pension';
 
   const start = document.getElementById('date-start').value;

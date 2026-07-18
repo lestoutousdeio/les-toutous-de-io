@@ -116,7 +116,7 @@
   .badge-en_cours { background: var(--info-light); color: var(--info); }
   .badge-termine { background: var(--gris-light); color: var(--gris); }
   .badge-pension { background: #F0FDF4; color: #166534; }
-  .badge-randonnee { background: #EFF6FF; color: #1D4ED8; }
+  .badge-randonnee, .badge-rando { background: #EFF6FF; color: #1D4ED8; }
   .badge-visite { background: #FFF7ED; color: #C2410C; }
   .badge-balade { background: #FDF4FF; color: #7E22CE; }
 
@@ -951,41 +951,84 @@ async function accepterDemande(id) {
   setTimeout(() => ouvrirModalAcceptation(d), 100);
 }
 
+// Le service d'une demande, normalisé ('rando' et 'randonnee' coexistent en base)
+function serviceDe(d) {
+  const s = (d.service || '').toLowerCase();
+  return s === 'rando' ? 'randonnee' : s;
+}
+
 function ouvrirModalAcceptation(d) {
   const nb = d.nb_chiens || 1;
+  const service = serviceDe(d);
   const nbNuits = d.date_fin && d.date_debut
     ? Math.ceil((new Date(d.date_fin) - new Date(d.date_debut)) / 86400000) : 1;
 
-  // Construire le modal dynamiquement
-  document.getElementById('accept-modal-body').innerHTML = `
-    <div class="info-row"><span class="ir-label">Client</span><span class="ir-value">${d.prenom_contact} ${d.nom_contact}</span></div>
-    <div class="info-row"><span class="ir-label">Dates</span><span class="ir-value">${formatDate(d.date_debut)} → ${formatDate(d.date_fin)}</span></div>
-    <div class="info-row"><span class="ir-label">Durée</span><span class="ir-value">${nbNuits} nuit(s) · ${nb} chien(s)</span></div>
+  // ── En-tête commun ──
+  let entete = `
+    <div class="info-row"><span class="ir-label">Client</span><span class="ir-value">${d.prenom_contact || ''} ${d.nom_contact || ''}</span></div>
+    <div class="info-row"><span class="ir-label">Service</span><span class="ir-value"><span class="badge badge-${service}">${labelService(service)}</span></span></div>`;
 
-    <div style="background:var(--gris-light);border-radius:10px;padding:1rem;margin:1rem 0;">
-      <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--gris);margin-bottom:0.75rem;">Horaires (impact sur le tarif)</div>
-      <div class="form-row-2">
-        <div class="form-group">
-          <label>Arrivée</label>
-          <select id="accept-arrivee" onchange="recalcAccept('${d.id}')">
-            <option value="normal">Avant 18h — tarif plein</option>
-            <option value="tard">Après 18h — 15 € (−10 €)</option>
+  // ── Bloc spécifique au service ──
+  let bloc = '';
+
+  if (service === 'pension') {
+    entete += `
+      <div class="info-row"><span class="ir-label">Dates</span><span class="ir-value">${formatDate(d.date_debut)} → ${formatDate(d.date_fin)}</span></div>
+      <div class="info-row"><span class="ir-label">Durée</span><span class="ir-value">${nbNuits} nuit(s) · ${nb} chien(s)</span></div>`;
+    bloc = `
+      <div style="background:var(--gris-light);border-radius:10px;padding:1rem;margin:1rem 0;">
+        <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--gris);margin-bottom:0.75rem;">Horaires (impact sur le tarif)</div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label>Arrivée</label>
+            <select id="accept-arrivee" onchange="recalcAccept('${d.id}')">
+              <option value="normal">Avant 18h — tarif plein</option>
+              <option value="tard">Après 18h — 15 € (−10 €)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Départ</label>
+            <select id="accept-depart" onchange="recalcAccept('${d.id}')">
+              <option value="normal">Après 11h — tarif plein</option>
+              <option value="tot">Avant 11h — 15 € (−10 €)</option>
+            </select>
+          </div>
+        </div>
+      </div>`;
+
+  } else if (service === 'randonnee') {
+    entete += `
+      <div class="info-row"><span class="ir-label">Date de sortie</span><span class="ir-value">${formatDate(d.date_debut)}</span></div>
+      <div class="info-row"><span class="ir-label">Chiens</span><span class="ir-value">${nb} chien(s)</span></div>`;
+    bloc = `
+      <div style="background:var(--gris-light);border-radius:10px;padding:1rem;margin:1rem 0;">
+        <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--gris);margin-bottom:0.75rem;">Tarif applicable</div>
+        <div class="form-group" style="margin-bottom:0;">
+          <select id="accept-tarif-rando" onchange="recalcAccept('${d.id}')">
+            <option value="30">30 €/chien — tarif standard</option>
+            <option value="25">25 €/chien — 2 chiens du même foyer</option>
+            <option value="20">20 €/chien — chien déjà en pension</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>Départ</label>
-          <select id="accept-depart" onchange="recalcAccept('${d.id}')">
-            <option value="normal">Après 11h — tarif plein</option>
-            <option value="tot">Avant 11h — 15 € (−10 €)</option>
-          </select>
-        </div>
-      </div>
-    </div>
+      </div>`;
 
-    <div id="accept-calcul" style="background:white;border:1px solid var(--gris-border);border-radius:10px;padding:1rem;margin-bottom:1rem;">
-      <!-- rempli par recalcAccept -->
-    </div>
-  `;
+  } else {
+    // Visite, balade ou autre : tarif selon zone → saisie manuelle
+    entete += `
+      <div class="info-row"><span class="ir-label">Date</span><span class="ir-value">${formatDate(d.date_debut)}</span></div>
+      <div class="info-row"><span class="ir-label">Chiens</span><span class="ir-value">${nb} chien(s)</span></div>`;
+    bloc = `
+      <div style="background:var(--gris-light);border-radius:10px;padding:1rem;margin:1rem 0;">
+        <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--gris);margin-bottom:0.5rem;">Montant (tarif selon zone)</div>
+        <div style="font-size:0.78rem;color:var(--gris);margin-bottom:0.75rem;">Saisis le montant convenu avec le client.</div>
+        <div class="form-group" style="margin-bottom:0;">
+          <input type="number" id="accept-montant-libre" placeholder="Ex : 25" min="0" step="1" oninput="recalcAccept('${d.id}')">
+        </div>
+      </div>`;
+  }
+
+  document.getElementById('accept-modal-body').innerHTML = entete + bloc + `
+    <div id="accept-calcul" style="background:white;border:1px solid var(--gris-border);border-radius:10px;padding:1rem;margin-bottom:1rem;"></div>`;
 
   recalcAccept(d.id);
   openModal('modal-acceptation');
@@ -995,32 +1038,57 @@ function recalcAccept(id) {
   const d = allDemandes.find(x => x.id === id);
   if (!d) return;
   const nb = d.nb_chiens || 1;
-  const rate = nb > 1 ? 20 : 25;
-  const nbNuits = d.date_fin && d.date_debut
-    ? Math.ceil((new Date(d.date_fin) - new Date(d.date_debut)) / 86400000) : 1;
+  const service = serviceDe(d);
 
-  const arrivee = document.getElementById('accept-arrivee')?.value || 'normal';
-  const depart = document.getElementById('accept-depart')?.value || 'normal';
+  let montantTotal = 0;
+  let joursFidelite = 0;   // seule la pension alimente la carte de fidélité
+  let arrivee = 'normal', depart = 'normal';
+  let detail = '';
 
-  // Jours pleins = nbNuits - 1 (sans premier et dernier) + tarif réduit pour arrivée/départ
-  const joursPlein = Math.max(0, nbNuits - (arrivee === 'tard' ? 1 : 0) - (depart === 'tot' ? 1 : 0));
-  const joursReduit = (arrivee === 'tard' ? 1 : 0) + (depart === 'tot' ? 1 : 0);
-  // Jours comptabilisés fidélité (sans les jours réduits)
-  const joursFidelite = joursPlein;
+  if (service === 'pension') {
+    const rate = nb > 1 ? 20 : 25;
+    const nbNuits = d.date_fin && d.date_debut
+      ? Math.ceil((new Date(d.date_fin) - new Date(d.date_debut)) / 86400000) : 1;
+    arrivee = document.getElementById('accept-arrivee')?.value || 'normal';
+    depart  = document.getElementById('accept-depart')?.value || 'normal';
 
-  const baseCalc = (joursPlein * rate * nb) + (joursReduit * 15 * nb);
-  const montantTotal = d.service === 'pension' ? baseCalc : (d.service === 'randonnee' ? 30 * nb : 0);
+    const joursPlein  = Math.max(0, nbNuits - (arrivee === 'tard' ? 1 : 0) - (depart === 'tot' ? 1 : 0));
+    const joursReduit = (arrivee === 'tard' ? 1 : 0) + (depart === 'tot' ? 1 : 0);
+    joursFidelite = joursPlein;
+    montantTotal  = (joursPlein * rate * nb) + (joursReduit * 15 * nb);
+
+    detail = `
+      <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+        <span style="font-size:0.85rem;color:var(--gris);">Jours plein tarif (${rate} €)</span>
+        <span style="font-weight:600;">${joursPlein} × ${rate} € × ${nb} = ${joursPlein * rate * nb} €</span>
+      </div>
+      ${joursReduit > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+        <span style="font-size:0.85rem;color:var(--gris);">Jours tarif réduit (15 €)</span>
+        <span style="font-weight:600;">${joursReduit} × 15 € × ${nb} = ${joursReduit * 15 * nb} €</span>
+      </div>` : ''}`;
+
+  } else if (service === 'randonnee') {
+    const unit = parseInt(document.getElementById('accept-tarif-rando')?.value) || 30;
+    montantTotal = unit * nb;
+    detail = `
+      <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+        <span style="font-size:0.85rem;color:var(--gris);">Randonnée montagne</span>
+        <span style="font-weight:600;">${nb} × ${unit} € = ${montantTotal} €</span>
+      </div>`;
+
+  } else {
+    montantTotal = parseFloat(document.getElementById('accept-montant-libre')?.value) || 0;
+    detail = `
+      <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+        <span style="font-size:0.85rem;color:var(--gris);">${labelService(service)}</span>
+        <span style="font-weight:600;">${montantTotal} €</span>
+      </div>`;
+  }
+
   const montantAcompte = Math.round(montantTotal * 0.2);
 
   document.getElementById('accept-calcul').innerHTML = `
-    <div class="summary-line" style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
-      <span style="font-size:0.85rem;color:var(--gris);">Jours plein tarif (${rate} €)</span>
-      <span style="font-weight:600;">${joursPlein} × ${rate} € × ${nb} = ${joursPlein * rate * nb} €</span>
-    </div>
-    ${joursReduit > 0 ? `<div class="summary-line" style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
-      <span style="font-size:0.85rem;color:var(--gris);">Jours tarif réduit (15 €)</span>
-      <span style="font-weight:600;">${joursReduit} × 15 € × ${nb} = ${joursReduit * 15 * nb} €</span>
-    </div>` : ''}
+    ${detail}
     <hr style="border:none;border-top:1px solid var(--gris-border);margin:0.75rem 0;">
     <div style="display:flex;justify-content:space-between;align-items:center;">
       <span style="font-weight:700;">Total</span>
@@ -1030,10 +1098,10 @@ function recalcAccept(id) {
       <span style="font-size:0.82rem;color:var(--gris);">Acompte 20%</span>
       <span style="font-size:0.9rem;font-weight:600;color:var(--terre);">${montantAcompte} €</span>
     </div>
-    <div style="display:flex;justify-content:space-between;margin-top:0.25rem;">
+    ${service === 'pension' ? `<div style="display:flex;justify-content:space-between;margin-top:0.25rem;">
       <span style="font-size:0.78rem;color:var(--gris);">Jours fidélité comptabilisés</span>
       <span style="font-size:0.82rem;font-weight:600;color:var(--foret);">${joursFidelite} j</span>
-    </div>
+    </div>` : ''}
   `;
 
   // Stocker pour confirmation
@@ -1504,6 +1572,7 @@ function messageAffiche(d) {
 }
 
 function labelService(s) {
+  if (s === 'rando') s = 'randonnee'; // anciennes lignes enregistrées avant normalisation
   return { pension: 'Pension', randonnee: 'Randonnée', visite: 'Visite', balade: 'Balade' }[s] || s;
 }
 
