@@ -340,34 +340,25 @@ function toast(msg, type = '') {
 }
 
 // ═══════════════════════════════════════════════
-// VÉRIFIE QU'UN EMAIL CORRESPOND À UN CLIENT CONNU
-// ═══════════════════════════════════════════════
-async function clientExiste(email) {
-  const { data, error } = await sb.from('clients').select('id').ilike('email', email).limit(1);
-  if (error) return false;
-  return data && data.length > 0;
-}
-
-// ═══════════════════════════════════════════════
 // 1ʳᵉ CONNEXION — envoi du lien de création
 // ═══════════════════════════════════════════════
+// Note sécurité : on n'interroge PAS la table clients avant l'envoi.
+// D'une part la RLS l'interdit, d'autre part cela permettrait à n'importe qui
+// de tester des adresses pour savoir qui est client (énumération d'emails).
+// On répond donc toujours la même chose. Un compte sans dossier client
+// correspondant ne verra aucune donnée : c'est la RLS qui protège, pas le message.
 async function envoyerLienCreation() {
   const email = document.getElementById('premiere-email').value.trim().toLowerCase();
   const btn = document.getElementById('premiere-btn');
   if (!email) { authMsg('Merci d\'indiquer votre email.', 'error'); return; }
   btn.disabled = true; btn.textContent = 'Envoi…';
   try {
-    // Gating : seuls les clients connus peuvent créer un accès
-    if (!(await clientExiste(email))) {
-      authMsg('Aucun dossier trouvé à cet email. Contactez-nous pour être enregistré comme client.', 'error');
-      return;
-    }
     const { error } = await sb.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: window.location.origin + window.location.pathname, shouldCreateUser: true }
     });
     if (error) throw error;
-    authMsg('📩 C\'est envoyé ! Ouvrez l\'email reçu à ' + email + ' et cliquez sur le lien pour créer votre mot de passe.', 'success');
+    authMsg('📩 Si un dossier existe à cette adresse, vous allez recevoir un lien pour créer votre mot de passe. Pensez à vérifier vos spams.', 'success');
   } catch (e) {
     authMsg('Erreur : ' + (e.message || 'réessayez plus tard.'), 'error');
   } finally {

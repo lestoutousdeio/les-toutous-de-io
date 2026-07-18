@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin · Les Toutous de Io</title>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -240,7 +241,7 @@
 </head>
 <body>
 
-<!-- ═══════════ ÉCRAN MOT DE PASSE ═══════════ -->
+<!-- ═══════════ ÉCRAN DE CONNEXION (Supabase Auth) ═══════════ -->
 <div id="login-screen" style="
   position:fixed; inset:0; background:var(--foret); z-index:999;
   display:flex; align-items:center; justify-content:center; padding:1rem;
@@ -249,17 +250,26 @@
     <div style="font-size:2.5rem; margin-bottom:1rem;">🐾</div>
     <div style="font-family:'Playfair Display',serif; font-size:1.4rem; color:var(--foret); margin-bottom:0.25rem;">Les Toutous de Io</div>
     <div style="font-size:0.82rem; color:var(--gris); margin-bottom:2rem;">Espace administration · Accès restreint</div>
+    <div style="text-align:left; margin-bottom:0.9rem;">
+      <label style="font-size:0.78rem; font-weight:600; color:var(--gris); text-transform:uppercase; letter-spacing:0.05em;">Email</label>
+      <input type="email" id="login-email" placeholder="vous@email.com" autocomplete="username"
+        style="width:100%; margin-top:0.4rem; border:1.5px solid #E5E0D8; border-radius:8px; padding:0.75rem 1rem; font-size:1rem; outline:none; font-family:'Inter',sans-serif;">
+    </div>
     <div style="text-align:left; margin-bottom:1rem;">
       <label style="font-size:0.78rem; font-weight:600; color:var(--gris); text-transform:uppercase; letter-spacing:0.05em;">Mot de passe</label>
-      <input type="password" id="login-pwd" placeholder="••••••••"
+      <input type="password" id="login-pwd" placeholder="••••••••" autocomplete="current-password"
         style="width:100%; margin-top:0.4rem; border:1.5px solid #E5E0D8; border-radius:8px; padding:0.75rem 1rem; font-size:1rem; outline:none; font-family:'Inter',sans-serif;"
-        onkeydown="if(event.key==='Enter') verifierMdp()">
+        onkeydown="if(event.key==='Enter') seConnecterAdmin()">
     </div>
-    <div id="login-error" style="color:#DC2626; font-size:0.82rem; margin-bottom:0.75rem; display:none;">Mot de passe incorrect.</div>
-    <button onclick="verifierMdp()" style="
+    <div id="login-error" style="color:#DC2626; font-size:0.82rem; margin-bottom:0.75rem; display:none;"></div>
+    <button id="login-btn" onclick="seConnecterAdmin()" style="
       width:100%; background:var(--foret); color:white; border:none; border-radius:8px;
       padding:0.85rem; font-size:0.95rem; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif;
-    ">Accéder à l'admin</button>
+    ">Se connecter</button>
+    <button onclick="motDePasseOublieAdmin()" style="
+      background:none; border:none; color:var(--foret); font-size:0.8rem; cursor:pointer;
+      text-decoration:underline; margin-top:1rem; font-family:'Inter',sans-serif;
+    ">Mot de passe oublié ?</button>
   </div>
 </div>
 
@@ -300,6 +310,7 @@
     <div class="topbar-right">
       <span class="topbar-date" id="today-label"></span>
       <div class="avatar">I</div>
+      <button onclick="seDeconnecterAdmin()" style="background:none;border:none;color:var(--gris);font-size:0.78rem;cursor:pointer;text-decoration:underline;font-family:'Inter',sans-serif;">Déconnexion</button>
     </div>
   </div>
 
@@ -606,11 +617,17 @@ emailjs.init('QynwZusGbtsAgGQqK');
 const SUPABASE_URL = 'https://xtxekhowasjzzplkskvf.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_siYC9zq1W1LRfwgjtJ2vCg_be1Eo0-c';
 
+// Client Supabase (authentification)
+const sbAuth = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Jeton de la session en cours — c'est LUI qui donne les droits admin (via la RLS),
+// pas la clé publique. Sans session valide, aucune donnée n'est accessible.
+let accessToken = null;
+
 async function sb(path, options = {}) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     headers: {
       'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Authorization': `Bearer ${accessToken || SUPABASE_KEY}`,
       'Content-Type': 'application/json',
       'Prefer': options.prefer || 'return=representation',
       ...options.headers
@@ -1530,21 +1547,73 @@ async function utiliserJourOffert(carteId, chienNom) {
 }
 
 // ═══════════════════════════════════════════════════
-// MOT DE PASSE ADMIN
+// AUTHENTIFICATION ADMIN (Supabase Auth)
 // ═══════════════════════════════════════════════════
-const MOT_DE_PASSE = 'toutous2025'; // ← change ce mot de passe !
+function erreurLogin(msg) {
+  const el = document.getElementById('login-error');
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
 
-function verifierMdp() {
-  const saisi = document.getElementById('login-pwd').value;
-  if (saisi === MOT_DE_PASSE) {
-    document.getElementById('login-screen').style.display = 'none';
-    sessionStorage.setItem('admin_ok', '1');
-    demarrerAdmin();
-  } else {
-    document.getElementById('login-error').style.display = 'block';
-    document.getElementById('login-pwd').value = '';
-    document.getElementById('login-pwd').focus();
+async function seConnecterAdmin() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const pwd = document.getElementById('login-pwd').value;
+  const btn = document.getElementById('login-btn');
+  if (!email || !pwd) { erreurLogin('Email et mot de passe requis.'); return; }
+  btn.disabled = true; btn.textContent = 'Connexion…';
+  erreurLogin('');
+  try {
+    const { data, error } = await sbAuth.auth.signInWithPassword({ email, password: pwd });
+    if (error) { erreurLogin('Email ou mot de passe incorrect.'); return; }
+    await ouvrirSessionAdmin(data.session);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Se connecter';
   }
+}
+
+// Vérifie que l'utilisateur connecté est bien un administrateur autorisé
+async function ouvrirSessionAdmin(session) {
+  accessToken = session.access_token;
+  const autorise = await estAdmin();
+  if (!autorise) {
+    erreurLogin("Ce compte n'a pas accès à l'administration.");
+    accessToken = null;
+    await sbAuth.auth.signOut();
+    return;
+  }
+  document.getElementById('login-screen').style.display = 'none';
+  demarrerAdmin();
+}
+
+async function estAdmin() {
+  try {
+    const { data, error } = await sbAuth.rpc('est_admin');
+    if (error) {
+      // La fonction n'existe pas encore (avant migration RLS) : on laisse passer
+      console.warn('est_admin indisponible, migration RLS pas encore appliquée ?', error.message);
+      return true;
+    }
+    return data === true;
+  } catch (e) { return true; }
+}
+
+async function motDePasseOublieAdmin() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  if (!email) { erreurLogin('Indique ton email puis reclique.'); return; }
+  const { error } = await sbAuth.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname });
+  erreurLogin(error ? 'Erreur : ' + error.message : '');
+  if (!error) {
+    const el = document.getElementById('login-error');
+    el.style.color = '#16A34A';
+    el.textContent = '📩 Lien de réinitialisation envoyé à ' + email;
+    el.style.display = 'block';
+  }
+}
+
+async function seDeconnecterAdmin() {
+  await sbAuth.auth.signOut();
+  accessToken = null;
+  location.reload();
 }
 
 function demarrerAdmin() {
@@ -1584,13 +1653,15 @@ const now = new Date();
 dispoMonth = now.getMonth();
 dispoYear = now.getFullYear();
 
-// Vérifier si déjà authentifié dans cette session
-if (sessionStorage.getItem('admin_ok') === '1') {
-  document.getElementById('login-screen').style.display = 'none';
-  demarrerAdmin();
-} else {
-  document.getElementById('login-pwd').focus();
-}
+// Session Supabase déjà active ? (reste connecté entre les visites)
+(async () => {
+  const { data: { session } } = await sbAuth.auth.getSession();
+  if (session) {
+    await ouvrirSessionAdmin(session);
+  } else {
+    document.getElementById('login-email').focus();
+  }
+})();
 </script>
 </body>
 </html>

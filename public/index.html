@@ -1400,6 +1400,24 @@ async function sbGet(path) {
   }
 }
 
+// Appel d'une fonction Supabase (RPC)
+async function sbRpc(fn, args = {}) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(args)
+    });
+    return res.ok ? res.json() : [];
+  } catch(e) {
+    return [];
+  }
+}
+
 async function sbPost(path, body) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     method: 'POST',
@@ -1421,8 +1439,10 @@ let liveDispos = [];
 
 async function loadLiveData() {
   try {
+    // Occupation : on passe par une fonction qui ne renvoie QUE des dates et
+    // un nombre de chiens — aucune donnée personnelle n'est exposée au public.
     [liveReservations, liveDispos] = await Promise.all([
-      sbGet('reservations?select=date_debut,date_fin,nb_chiens,statut,service&statut=neq.annule'),
+      sbRpc('occupation_publique'),
       sbGet('disponibilites?select=date_debut,date_fin,type')
     ]);
   } catch(e) {
@@ -1435,9 +1455,10 @@ function getCapaciteJour(dateStr) {
   // Bloqué manuellement ?
   const bloque = liveDispos.some(d => d.date_debut <= dateStr && d.date_fin >= dateStr);
   if (bloque) return 'bloque';
-  // Compter chiens ce jour
+  // Compter les chiens ce jour-là
+  // (occupation_publique renvoie déjà uniquement les pensions non annulées)
   const nb = liveReservations
-    .filter(r => r.statut !== 'annule' && r.service === 'pension' && r.date_debut <= dateStr && (r.date_fin === null || r.date_fin >= dateStr))
+    .filter(r => r.date_debut <= dateStr && (r.date_fin === null || r.date_fin >= dateStr))
     .reduce((sum, r) => sum + (r.nb_chiens || 1), 0);
   if (nb >= 4) return 'full';
   if (nb >= 2) return 'partial';
