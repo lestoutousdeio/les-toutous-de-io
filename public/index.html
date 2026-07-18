@@ -470,7 +470,7 @@
         <div class="team-avatar">🏔️</div>
         <h3>Ronan</h3>
         <div class="role">Co-référent & promenades montagne</div>
-        <p>Coach sportif et amoureux de la nature basque, Ronan accompagne les randonnées du jeudi et veille avec moi au bien-être des toutous.</p>
+        <p>Coach sportif et amoureux de la nature basque, Ronan encadre les randonnées en montagne avec Iolana et veille au bien-être des toutous.</p>
         <span class="badge-acaced">✓ Diplômé ACACED</span>
       </div>
       <div class="team-card">
@@ -555,8 +555,8 @@
       <div class="card">
         <div class="card-icon">🏔️</div>
         <h3>Randonnée montagne</h3>
-        <p>Chaque jeudi matin, Ronan emmène vos chiens en randonnée de 2h dans les montagnes basques. Récupération & dépose à domicile.</p>
-        <div class="card-price">30 € · Max. 5 chiens · Jeudi ~9h</div>
+        <p>Iolana et Ronan emmènent un petit groupe de chiens en randonnée de 2h dans les montagnes basques. Sorties programmées à l'avance. Récupération & dépose à domicile.</p>
+        <div class="card-price">30 € · Max. 5 chiens · Le matin</div>
       </div>
       <div class="card">
         <div class="card-icon">🏠</div>
@@ -629,17 +629,17 @@
     <div class="service-block">
       <div class="service-header">
         <h2>🏔️ Randonnée montagne</h2>
-        <span class="service-tag">Tous les jeudis</span>
+        <span class="service-tag">Sorties programmées</span>
       </div>
-      <p class="service-desc">Chaque jeudi matin vers 9h, Ronan emmène un petit groupe de chiens (5 max) pour une randonnée de 2h dans les montagnes du Pays Basque. Récupération à domicile, randonnée, retour à domicile. Un moment exceptionnel pour votre chien !</p>
+      <p class="service-desc">Iolana et Ronan emmènent un petit groupe de chiens (5 max) pour une randonnée de 2h dans les montagnes du Pays Basque. Les sorties ont lieu <strong>le matin</strong>, généralement le jeudi et parfois le vendredi : nous fixons les dates plusieurs semaines à l'avance et vous communiquons l'horaire précis. Récupération à domicile, randonnée, retour à domicile. Un moment exceptionnel pour votre chien !</p>
       <div class="pricing-table">
         <div class="price-item"><div class="amount">30 €</div><div class="label">Par chien</div></div>
         <div class="price-item"><div class="amount">5 max</div><div class="label">Chiens par sortie</div></div>
-        <div class="price-item"><div class="amount">Jeudi 9h</div><div class="label">Horaire fixe</div></div>
+        <div class="price-item"><div class="amount">Le matin</div><div class="label">Dates fixées à l'avance</div></div>
       </div>
       <div class="upsell-tip">
         <span class="icon">💡</span>
-        <span>Si votre chien est en pension et qu'un jeudi tombe dans son séjour, proposez-lui cette aventure montagne — une expérience en plus !</span>
+        <span>Si une sortie programmée tombe pendant le séjour de votre chien, nous vous la proposerons automatiquement au moment de la demande — une aventure en plus !</span>
       </div>
     </div>
 
@@ -751,7 +751,7 @@
         <div class="service-option" onclick="selectService(this, 'rando')" data-service="rando">
           <span class="s-icon">🏔️</span>
           <span class="s-name">Randonnée</span>
-          <span class="s-price">Jeudi · 2h</span>
+          <span class="s-price">Matin · 2h</span>
         </div>
         <div class="service-option" onclick="selectService(this, 'visite')" data-service="visite">
           <span class="s-icon">🏠</span>
@@ -946,7 +946,7 @@
       </div>
       <div style="background:white; border-radius:10px; padding: 1rem 1.5rem; border: 1px solid #eee; flex:1; min-width:140px; text-align:center;">
         <div style="font-size:1.8rem; font-weight:700; color: var(--or);">3</div>
-        <div style="font-size:0.75rem; color: var(--gris); text-transform:uppercase; letter-spacing:0.05em;">Rando jeudi</div>
+        <div style="font-size:0.75rem; color: var(--gris); text-transform:uppercase; letter-spacing:0.05em;">Prochaine rando</div>
         <div class="capacity-bar" style="margin-top:8px;"><div class="capacity-fill cap-3"></div></div>
       </div>
       <div style="background:white; border-radius:10px; padding: 1rem 1.5rem; border: 1px solid #eee; flex:1; min-width:140px; text-align:center;">
@@ -1001,7 +1001,7 @@
       <label>Service</label>
       <select>
         <option>Pension</option>
-        <option>Randonnée jeudi</option>
+        <option>Randonnée montagne</option>
         <option>Visite domicile</option>
         <option>Balade</option>
       </select>
@@ -1152,14 +1152,20 @@ function formatDate(d) {
 // ============= SMART UPSELLS =============
 // ============= SMART UPSELLS =============
 
-// Compte les jeudis dans une période
-function compterJeudis(startDate, endDate) {
-  if (!startDate || !endDate) return 0;
-  let count = 0;
-  for (let d = new Date(startDate); d <= new Date(endDate); d.setDate(d.getDate() + 1)) {
-    if (d.getDay() === 4) count++;
-  }
-  return count;
+// Randonnées programmées par Iolana et Ronan qui tombent pendant le séjour.
+// (Avant, le code devinait les jeudis — faux : les sorties sont parfois le
+// vendredi et l'horaire varie. Ce sont désormais de vraies dates saisies.)
+function randosDuSejour(startDate, endDate) {
+  if (!startDate) return [];
+  const fin = endDate || startDate;
+  return liveRandos
+    .filter(r => r.date_sortie >= startDate && r.date_sortie <= fin)
+    .sort((a, b) => a.date_sortie.localeCompare(b.date_sortie));
+}
+
+// « jeudi 23 juil. » — pour nommer chaque sortie proposée
+function formatDateRando(d) {
+  return new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' });
 }
 
 // Prix rando selon contexte
@@ -1180,26 +1186,23 @@ function updateUpsells(nights = 0) {
 
   if (selectedService !== 'pension' || !start) { section.style.display = 'none'; return; }
 
-  const nbJeudis = compterJeudis(start, end);
+  const randos = randosDuSejour(start, end);
   const unitRando = prixRando(nbChiens, true); // toujours en pension ici
-  const labelRando = unitRando < 30 ? `${unitRando} €/chien · (en pension)` : `${unitRando} €`;
 
   const items = [];
 
-  // Rando : autant de lignes que de jeudis
-  if (nbJeudis > 0) {
-    for (let i = 1; i <= nbJeudis; i++) {
-      items.push({
-        id: `rando_${i}`,
-        baseId: 'rando',
-        icon: '🏔️',
-        name: `Randonnée jeudi${nbJeudis > 1 ? ` #${i}` : ''}`,
-        reason: nbJeudis > 1 ? `${nbJeudis} jeudis pendant le séjour` : 'Un jeudi tombe pendant le séjour',
-        price: `${unitRando} €`,
-        amount: unitRando
-      });
-    }
-  }
+  // Une ligne par sortie réellement programmée pendant le séjour
+  randos.forEach(r => {
+    items.push({
+      id: `rando_${r.date_sortie}`,
+      baseId: 'rando',
+      icon: '🏔️',
+      name: `Randonnée du ${formatDateRando(r.date_sortie)}`,
+      reason: `Sortie montagne programmée${r.heure ? ' · départ ' + r.heure : ' · le matin'}`,
+      price: `${unitRando} €`,
+      amount: unitRando
+    });
+  });
 
   // Album si > 5 nuits
   if (nights > 5) {
@@ -1311,8 +1314,8 @@ function updateSummaryAddons() {
   container.innerHTML = '';
   addedUpsells.forEach((val, id) => {
     const icon = id.startsWith('rando') ? '🏔️' : id === 'album' ? '📸' : '🦴';
-    const baseLabel = id.startsWith('rando')
-      ? `Rando jeudi${id.includes('_') ? ' #' + id.split('_')[1] : ''}`
+    const baseLabel = id.startsWith('rando_')
+      ? `Rando ${formatDateRando(id.slice(6))}`
       : id === 'album' ? 'Album photo' : 'Collier';
 
     // val peut être un nombre (simple) ou un objet {chiens, total} (multi)
@@ -1436,14 +1439,16 @@ async function sbPost(path, body) {
 // ============= DONNÉES LIVE =============
 let liveReservations = [];
 let liveDispos = [];
+let liveRandos = []; // sorties programmées par Iolana et Ronan
 
 async function loadLiveData() {
   try {
     // Occupation : on passe par une fonction qui ne renvoie QUE des dates et
     // un nombre de chiens — aucune donnée personnelle n'est exposée au public.
-    [liveReservations, liveDispos] = await Promise.all([
+    [liveReservations, liveDispos, liveRandos] = await Promise.all([
       sbRpc('occupation_publique'),
-      sbGet('disponibilites?select=date_debut,date_fin,type')
+      sbGet('disponibilites?select=date_debut,date_fin,type'),
+      sbGet('randonnees?select=date_sortie,heure,places_max&order=date_sortie.asc')
     ]);
   } catch(e) {
     // Mode hors-ligne : calendrier fonctionne sans données live
@@ -1558,16 +1563,16 @@ async function submitBooking() {
   // Détail rando par chien
   let randoDetail = '';
   addedUpsells.forEach((val, id) => {
-    if (id.startsWith('rando')) {
-      const num = id.split('_')[1];
+    if (id.startsWith('rando_')) {
+      const dateSortie = formatDateRando(id.slice(6));
       if (typeof val === 'object' && val.chiens) {
         const nomsChiens = val.chiens.map(c => {
           const nom = document.getElementById(`chien-nom-${c}`)?.value.trim() || `Chien ${c}`;
           return nom;
         }).join(', ');
-        randoDetail += `\nRandonnée jeudi #${num} → ${nomsChiens} (${val.total} €)`;
+        randoDetail += `\nRandonnée du ${dateSortie} → ${nomsChiens} (${val.total} €)`;
       } else {
-        randoDetail += `\nRandonnée jeudi #${num} → tous les chiens`;
+        randoDetail += `\nRandonnée du ${dateSortie} → tous les chiens`;
       }
     }
   });

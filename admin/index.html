@@ -296,6 +296,9 @@
     <div class="nav-item" onclick="showPage('disponibilites')">
       <span class="nav-icon">📅</span> Disponibilités
     </div>
+    <div class="nav-item" onclick="showPage('randonnees')">
+      <span class="nav-icon">🏔️</span> Randonnées
+    </div>
     <div class="nav-item" onclick="showPage('fidelite')">
       <span class="nav-icon">🎁</span> Fidélité
     </div>
@@ -336,9 +339,9 @@
           <div class="sc-sub">peuvent réserver</div>
         </div>
         <div class="stat-card">
-          <div class="sc-label">Randonnée jeudi</div>
+          <div class="sc-label">Prochaine randonnée</div>
           <div class="sc-value" id="stat-rando">—</div>
-          <div class="sc-sub">/ 5 max</div>
+          <div class="sc-sub" id="stat-rando-sub">—</div>
         </div>
       </div>
 
@@ -475,6 +478,44 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════ RANDONNÉES ═══════════════════════════════ -->
+    <div class="page" id="page-randonnees">
+      <div class="section-header">
+        <div>
+          <h2>🏔️ Randonnées programmées</h2>
+          <div class="sh-sub">Saisissez vos dates de sortie à l'avance — elles seront proposées automatiquement aux clients dont le séjour tombe dessus.</div>
+        </div>
+      </div>
+
+      <div class="card-wrap" style="padding:1.25rem; margin-bottom:1.5rem;">
+        <div class="form-row-2">
+          <div class="form-group">
+            <label>Date de la sortie</label>
+            <input type="date" id="rando-date">
+          </div>
+          <div class="form-group">
+            <label>Heure de départ</label>
+            <input type="text" id="rando-heure" placeholder="Ex : 9h00">
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label>Places max</label>
+            <input type="number" id="rando-places" value="5" min="1" max="10">
+          </div>
+          <div class="form-group">
+            <label>Note (facultatif)</label>
+            <input type="text" id="rando-notes" placeholder="Ex : Départ La Rhune">
+          </div>
+        </div>
+        <button class="btn btn-green" onclick="ajouterRandonnee()">+ Programmer cette sortie</button>
+      </div>
+
+      <div class="card-wrap" id="table-randonnees">
+        <div class="loading"><div class="spinner"></div><br>Chargement…</div>
       </div>
     </div>
 
@@ -650,6 +691,7 @@ let allDemandes = [];
 let allClients = [];
 let allReservations = [];
 let allDispos = [];
+let allRandos = [];
 let filtreCourant = 'tous';
 let weekOffset = 0;
 let dispoMonth, dispoYear;
@@ -664,6 +706,7 @@ const pageTitles = {
   planning: 'Planning',
   clients: 'Clients',
   disponibilites: 'Disponibilités',
+  randonnees: 'Randonnées',
   fidelite: 'Fidélité'
 };
 
@@ -679,6 +722,7 @@ function showPage(id) {
   if (id === 'disponibilites') renderDispoCalendar();
   if (id === 'clients') renderClients();
   if (id === 'demandes') renderDemandes();
+  if (id === 'randonnees') renderRandonnees();
   if (id === 'fidelite') loadFidelite();
 }
 
@@ -693,6 +737,7 @@ async function loadAll() {
       sb('reservations?order=date_debut.asc'),
       sb('disponibilites?order=date_debut.asc')
     ]);
+    await chargerRandonnees();
     updateStats();
     renderDashboard();
   } catch(e) {
@@ -719,20 +764,20 @@ function updateStats() {
   const validés = allClients.filter(c => c.statut === 'valide').length;
   document.getElementById('stat-clients').textContent = validés;
 
-  // Randonnée prochain jeudi
-  const nextJeudi = getNextJeudi();
-  const randoJeudi = allReservations.filter(r =>
-    r.service === 'randonnee' && r.date_debut === nextJeudi && r.statut !== 'annule'
-  );
-  document.getElementById('stat-rando').textContent = randoJeudi.length;
-}
-
-function getNextJeudi() {
-  const d = new Date();
-  const day = d.getDay();
-  const diff = day <= 4 ? 4 - day : 11 - day;
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().split('T')[0];
+  // Prochaine randonnée programmée (plus de jeudi deviné : ce sont vos dates)
+  const prochaine = allRandos.filter(r => r.date_sortie >= today)[0];
+  const elRando = document.getElementById('stat-rando');
+  const elSub = document.getElementById('stat-rando-sub');
+  if (prochaine) {
+    const inscrits = allReservations.filter(r =>
+      r.service === 'randonnee' && r.date_debut === prochaine.date_sortie && r.statut !== 'annule'
+    ).reduce((s, r) => s + (r.nb_chiens || 1), 0);
+    elRando.textContent = `${inscrits}/${prochaine.places_max || 5}`;
+    if (elSub) elSub.textContent = formatDateRando(prochaine.date_sortie);
+  } else {
+    elRando.textContent = '—';
+    if (elSub) elSub.textContent = 'aucune programmée';
+  }
 }
 
 // ═══════════════════════════════════════════════════
@@ -1212,17 +1257,20 @@ function renderPlanning() {
   });
   bodyHTML += '</tr>';
 
-  // Corps - Randonnée (jeudi)
+  // Corps - Randonnée : uniquement les jours où une sortie est programmée
   bodyHTML += '<tr><td class="row-label">🏔️ Rando</td>';
-  days.forEach((d, i) => {
+  days.forEach(d => {
     const ds = d.toISOString().split('T')[0];
-    const isJeudi = d.getDay() === 4;
     const isToday = ds === todayStr;
-    if (isJeudi) {
+    const rando = allRandos.find(r => r.date_sortie === ds);
+    if (rando) {
       const resas = allReservations.filter(r => r.service === 'randonnee' && r.statut !== 'annule' && r.date_debut === ds);
+      const nb = resas.reduce((s, r) => s + (r.nb_chiens || 1), 0);
+      const max = rando.places_max || 5;
       bodyHTML += `<td class="${isToday ? 'today-col' : ''}">
+        <div style="font-size:0.62rem;color:var(--info);font-weight:600;margin-bottom:3px;">${rando.heure || 'matin'}</div>
         ${resas.map(r => `<span class="dog-pill rando">${r.chien_nom || 'Chien'}</span>`).join('')}
-        <div style="font-size:0.65rem;color:var(--gris);margin-top:2px;">${resas.length}/5</div>
+        <div style="font-size:0.65rem;color:var(--gris);margin-top:2px;">${nb}/${max}</div>
       </td>`;
     } else {
       bodyHTML += `<td style="background:#FAFAFA;"></td>`;
@@ -1477,6 +1525,94 @@ function showToast(msg, type = '') {
   t.className = 'toast' + (type ? ' ' + type : '');
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ═══════════════════════════════════════════════════
+// RANDONNÉES PROGRAMMÉES
+// ═══════════════════════════════════════════════════
+function formatDateRando(d) {
+  return new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+async function chargerRandonnees() {
+  try {
+    allRandos = await sb('randonnees?order=date_sortie.asc') || [];
+  } catch(e) {
+    allRandos = [];
+    console.warn('Randonnées indisponibles (migration pas encore appliquée ?)', e.message);
+  }
+}
+
+async function renderRandonnees() {
+  const div = document.getElementById('table-randonnees');
+  div.innerHTML = '<div class="loading"><div class="spinner"></div><br>Chargement…</div>';
+  await chargerRandonnees();
+  const today = new Date().toISOString().split('T')[0];
+  const aVenir = allRandos.filter(r => r.date_sortie >= today);
+  const passees = allRandos.filter(r => r.date_sortie < today);
+
+  if (!allRandos.length) {
+    div.innerHTML = `<div class="empty-state"><div class="es-icon">🏔️</div>Aucune sortie programmée.<br>
+      <span style="font-size:0.8rem;">Ajoutez vos dates ci-dessus — les clients dont le séjour tombe dessus se verront proposer la randonnée.</span></div>`;
+    return;
+  }
+
+  const ligne = (r, passe) => {
+    const inscrits = allReservations.filter(x =>
+      x.service === 'randonnee' && x.statut !== 'annule' && x.date_debut === r.date_sortie
+    ).reduce((s, x) => s + (x.nb_chiens || 1), 0);
+    const max = r.places_max || 5;
+    return `<tr${passe ? ' style="opacity:0.5;"' : ''}>
+      <td class="fw-600">${formatDateRando(r.date_sortie)}</td>
+      <td>${r.heure || '<span class="text-muted">matin</span>'}</td>
+      <td>${inscrits}/${max}${inscrits >= max ? ' <span class="badge badge-refusee">Complet</span>' : ''}</td>
+      <td class="text-muted">${r.notes || '—'}</td>
+      <td><button class="btn btn-gray" onclick="supprimerRandonnee('${r.id}')">✕</button></td>
+    </tr>`;
+  };
+
+  div.innerHTML = `<table>
+    <thead><tr><th>Date</th><th>Départ</th><th>Chiens inscrits</th><th>Note</th><th></th></tr></thead>
+    <tbody>
+      ${aVenir.map(r => ligne(r, false)).join('')}
+      ${passees.length ? `<tr><td colspan="5" style="background:var(--gris-light);font-size:0.75rem;font-weight:600;color:var(--gris);text-transform:uppercase;letter-spacing:0.05em;">Sorties passées</td></tr>` : ''}
+      ${passees.reverse().map(r => ligne(r, true)).join('')}
+    </tbody>
+  </table>`;
+}
+
+async function ajouterRandonnee() {
+  const date = document.getElementById('rando-date').value;
+  if (!date) { showToast('Choisis une date', 'error'); return; }
+  const body = {
+    date_sortie: date,
+    heure: document.getElementById('rando-heure').value.trim() || null,
+    places_max: parseInt(document.getElementById('rando-places').value) || 5,
+    notes: document.getElementById('rando-notes').value.trim() || null
+  };
+  try {
+    await sb('randonnees', { method: 'POST', body });
+    document.getElementById('rando-date').value = '';
+    document.getElementById('rando-heure').value = '';
+    document.getElementById('rando-notes').value = '';
+    showToast('🏔️ Sortie programmée !', 'success');
+    renderRandonnees();
+  } catch(e) {
+    const msg = String(e.message || '');
+    showToast(msg.includes('duplicate') || msg.includes('unique')
+      ? 'Une sortie est déjà programmée à cette date'
+      : 'Erreur : ' + msg, 'error');
+  }
+}
+
+async function supprimerRandonnee(id) {
+  const r = allRandos.find(x => x.id === id);
+  if (!confirm(`Supprimer la sortie du ${r ? formatDateRando(r.date_sortie) : 'cette date'} ?`)) return;
+  try {
+    await sb(`randonnees?id=eq.${id}`, { method: 'DELETE', prefer: 'return=minimal' });
+    showToast('Sortie supprimée');
+    renderRandonnees();
+  } catch(e) { showToast('Erreur : ' + e.message, 'error'); }
 }
 
 // ═══════════════════════════════════════════════════
