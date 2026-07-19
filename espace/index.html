@@ -95,6 +95,9 @@
   .paiement-bar { height: 7px; background: var(--gris-border); border-radius: 4px; overflow: hidden; margin: 0.5rem 0; }
   .paiement-fill { height: 100%; background: var(--success); border-radius: 4px; transition: width 0.4s; }
   .paiement-solde { font-size: 0.85rem; color: var(--success); font-weight: 600; margin-top: 0.4rem; }
+  .paiement-annule { font-size: 0.85rem; color: var(--danger); font-weight: 600; margin-bottom: 0.5rem; }
+  .paiement-note { font-size: 0.78rem; color: var(--gris); margin-top: 0.4rem; }
+  .badge.annule { background: #FEF2F2; color: var(--danger); }
   .resa-dates { font-weight: 600; }
   .resa-meta { font-size: 0.82rem; color: var(--gris); margin-top: 2px; }
   .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
@@ -530,9 +533,12 @@ function rendreDashboard(client, resas, fids) {
     resaDiv.innerHTML = resas.map(r => {
       const aVenir = r.date_debut && r.date_debut >= today;
       const noms = (getChiens(r) || []).map(c => c.nom).filter(Boolean).join(', ') || r.chien_nom || '';
-      const badge = r.statut === 'confirme'
-        ? (aVenir ? '<span class="badge a_venir">À venir</span>' : '<span class="badge passe">Terminé</span>')
-        : `<span class="badge confirme">${r.statut || ''}</span>`;
+      const annulee = r.statut === 'annule';
+      const badge = annulee
+        ? '<span class="badge annule">Annulé</span>'
+        : (r.statut === 'confirme'
+            ? (aVenir ? '<span class="badge a_venir">À venir</span>' : '<span class="badge passe">Terminé</span>')
+            : `<span class="badge confirme">${r.statut || ''}</span>`);
 
       // Solde : total − somme des versements déjà reçus
       const total = Number(r.montant_total || 0);
@@ -542,7 +548,17 @@ function rendreDashboard(client, resas, fids) {
       const reste = Math.round((total - paye) * 100) / 100;
 
       let blocPaiement = '';
-      if (total > 0) {
+      if (annulee) {
+        // Séjour annulé : plus rien n'est dû, on informe simplement
+        blocPaiement = `
+          <div class="paiement-bloc">
+            <div class="paiement-annule">Ce séjour a été annulé${r.annule_le ? ' le ' + formatDate(r.annule_le) : ''}.</div>
+            ${paye > 0
+              ? `<div class="paiement-ligne"><span>Montant conservé</span><span class="fw6">${euros(paye)}</span></div>`
+              : `<div class="paiement-ligne"><span>Aucun montant retenu</span><span class="fw6">0 €</span></div>`}
+            <div class="paiement-note">Rien ne reste à régler pour ce séjour.</div>
+          </div>`;
+      } else if (total > 0) {
         const pct = Math.min(100, Math.round(paye / total * 100));
         blocPaiement = `
           <div class="paiement-bloc">

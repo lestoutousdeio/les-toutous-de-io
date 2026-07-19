@@ -448,6 +448,7 @@
         <button class="btn btn-gray filtre-resa" onclick="filtrerResas('du')">Reste à payer</button>
         <button class="btn btn-gray filtre-resa" onclick="filtrerResas('solde')">Soldées</button>
         <button class="btn btn-gray filtre-resa" onclick="filtrerResas('avenir')">À venir</button>
+        <button class="btn btn-gray filtre-resa" onclick="filtrerResas('annulees')">Annulées</button>
       </div>
 
       <div class="card-wrap" id="table-reservations">
@@ -716,7 +717,41 @@
     </div>
 
     <div class="modal-actions">
-      <button class="btn btn-gray" onclick="closeModal('modal-paiements')" style="width:100%;">Fermer</button>
+      <button class="btn btn-gray" onclick="closeModal('modal-paiements')" style="flex:1;">Fermer</button>
+      <button class="btn btn-red" id="mp-annuler-btn" onclick="ouvrirAnnulation(resaActive.id)" style="flex:1;">✕ Annuler la réservation</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal annulation de réservation -->
+<div class="modal-overlay" id="modal-annulation">
+  <div class="modal">
+    <h3>✕ Annuler la réservation</h3>
+    <div class="modal-sub" id="ma-sub"></div>
+
+    <div id="ma-regle" style="border-radius:10px;padding:1rem;margin-bottom:1.25rem;"></div>
+
+    <div class="form-group">
+      <label>Montant à rembourser (€)</label>
+      <input type="number" id="ma-remboursement" step="0.01" min="0">
+      <div style="font-size:0.76rem;color:var(--gris);margin-top:0.35rem;">
+        Pré-rempli selon la règle des 30 jours — modifiable si vous décidez d'un geste.
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Motif (facultatif)</label>
+      <input type="text" id="ma-motif" placeholder="Ex : imprévu familial, chien malade…">
+    </div>
+
+    <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:0.75rem 0.9rem;font-size:0.8rem;color:#92400E;line-height:1.5;">
+      La place sera immédiatement libérée dans le planning, et le solde restant
+      sera annulé : le client ne devra plus rien au-delà de ce qui est conservé.
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-gray" onclick="closeModal('modal-annulation')" style="flex:1;padding:0.7rem;">Retour</button>
+      <button class="btn btn-red" onclick="confirmerAnnulation()" style="flex:1;padding:0.7rem;">Confirmer l'annulation</button>
     </div>
   </div>
 </div>
@@ -1796,8 +1831,13 @@ function renderReservations() {
   // Statistiques globales
   const actives = allReservations.filter(r => r.statut !== 'annule');
   const facture = actives.reduce((s, r) => s + Number(r.montant_total || 0), 0);
-  const encaisse = actives.reduce((s, r) => s + totalPaye(r.id), 0);
-  const reste = Math.round((facture - encaisse) * 100) / 100;
+  // L'encaissé compte TOUS les paiements, y compris les acomptes conservés sur
+  // une réservation annulée (c'est de l'argent réellement perçu), nets des
+  // remboursements (enregistrés en négatif).
+  const encaisse = allPaiements.reduce((s, p) => s + Number(p.montant || 0), 0);
+  // Le reste à encaisser ne concerne que les réservations toujours actives :
+  // une annulation solde l'affaire, le client ne doit plus rien.
+  const reste = actives.reduce((s, r) => s + Math.max(0, soldeResa(r).reste), 0);
   const nbDus = actives.filter(r => soldeResa(r).reste > 0).length;
 
   document.getElementById('stat-encaisse').textContent = euros(encaisse);
@@ -1812,8 +1852,9 @@ function renderReservations() {
   badge.textContent = nbDus;
   badge.style.display = nbDus > 0 ? 'inline-block' : 'none';
 
-  // Filtrage
-  let liste = actives.filter(r => {
+  // Filtrage — les annulées ont leur propre onglet, elles ne polluent pas le reste
+  const base = filtreResa === 'annulees' ? allReservations.filter(r => r.statut === 'annule') : actives;
+  let liste = base.filter(r => {
     const s = soldeResa(r);
     if (filtreResa === 'du') return s.reste > 0;
     if (filtreResa === 'solde') return s.reste <= 0;
@@ -1835,24 +1876,126 @@ function renderReservations() {
       const s = soldeResa(r);
       const client = allClients.find(c => c.id === r.client_id);
       const noms = (getChiens(r) || []).map(c => c.nom).filter(Boolean).join(', ') || r.chien_nom || '—';
-      const badgeReste = s.reste <= 0
-        ? '<span class="badge badge-acceptee">Soldé</span>'
-        : `<span class="fw-600" style="color:var(--danger);">${euros(s.reste)}</span>`;
-      return `<tr>
+      const annulee = r.statut === 'annule';
+      // Une annulation solde l'affaire : plus rien n'est dû, seul l'acompte
+      // éventuellement conservé apparaît.
+      const badgeReste = annulee
+        ? `<span class="badge badge-refusee">Annulée</span>`
+        : (s.reste <= 0
+            ? '<span class="badge badge-acceptee">Soldé</span>'
+            : `<span class="fw-600" style="color:var(--danger);">${euros(s.reste)}</span>`);
+      return `<tr${annulee ? ' style="opacity:0.65;"' : ''}>
         <td class="text-muted">${formatDate(r.date_debut)}${r.date_fin ? ' → ' + formatDate(r.date_fin) : ''}</td>
         <td class="fw-600">${client ? client.prenom + ' ' + client.nom : '—'}</td>
         <td>${noms}</td>
         <td><span class="badge badge-${serviceDe(r)}">${labelService(r.service)}</span></td>
-        <td>${euros(s.total)}</td>
-        <td style="color:var(--success);">${euros(s.paye)}</td>
+        <td${annulee ? ' style="text-decoration:line-through;color:var(--gris);"' : ''}>${euros(s.total)}</td>
+        <td style="color:${s.paye > 0 ? 'var(--success)' : 'var(--gris)'};">${euros(s.paye)}${annulee && s.paye > 0 ? '<br><span class="text-muted" style="font-size:0.7rem;">conservé</span>' : ''}</td>
         <td>${badgeReste}</td>
-        <td><button class="btn btn-blue" onclick="ouvrirPaiements('${r.id}')">Gérer</button></td>
+        <td><button class="btn btn-blue" onclick="ouvrirPaiements('${r.id}')">${annulee ? 'Voir' : 'Gérer'}</button></td>
       </tr>`;
     }).join('')}</tbody>
   </table>`;
 }
 
 let resaActive = null;
+
+// ── ANNULATION ──
+// Règle : plus de 30 jours avant le séjour → acompte remboursable ;
+// en deçà → acompte conservé, sauf geste commercial décidé par Iolana.
+const JOURS_REMBOURSEMENT = 30;
+
+function joursAvantSejour(r) {
+  if (!r.date_debut) return null;
+  const debut = new Date(r.date_debut + 'T00:00:00');
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return Math.round((debut - today) / 86400000);
+}
+
+function ouvrirAnnulation(id) {
+  resaActive = allReservations.find(r => r.id === id);
+  if (!resaActive) return;
+  const r = resaActive;
+  const client = allClients.find(c => c.id === r.client_id);
+  const s = soldeResa(r);
+  const jours = joursAvantSejour(r);
+  const remboursable = jours !== null && jours > JOURS_REMBOURSEMENT;
+
+  document.getElementById('ma-sub').textContent =
+    `${client ? client.prenom + ' ' + client.nom : ''} · ${formatDate(r.date_debut)}${r.date_fin ? ' → ' + formatDate(r.date_fin) : ''}`;
+
+  const bloc = document.getElementById('ma-regle');
+  if (jours === null) {
+    bloc.style.cssText = 'border-radius:10px;padding:1rem;margin-bottom:1.25rem;background:var(--gris-light);';
+    bloc.innerHTML = `<div style="font-size:0.85rem;">Séjour sans date : décide librement du remboursement.</div>`;
+  } else if (jours < 0) {
+    bloc.style.cssText = 'border-radius:10px;padding:1rem;margin-bottom:1.25rem;background:var(--gris-light);';
+    bloc.innerHTML = `<div style="font-size:0.85rem;">Séjour déjà commencé ou passé (il y a ${Math.abs(jours)} jour(s)).</div>`;
+  } else if (remboursable) {
+    bloc.style.cssText = 'border-radius:10px;padding:1rem;margin-bottom:1.25rem;background:var(--success-light);border:1px solid #BBF7D0;';
+    bloc.innerHTML = `
+      <div class="fw-600" style="color:var(--success);margin-bottom:0.3rem;">✓ Annulation à ${jours} jours du séjour</div>
+      <div style="font-size:0.85rem;color:var(--texte);">Plus de ${JOURS_REMBOURSEMENT} jours : l'acompte de <strong>${euros(s.paye)}</strong> est remboursable.</div>`;
+  } else {
+    bloc.style.cssText = 'border-radius:10px;padding:1rem;margin-bottom:1.25rem;background:var(--warning-light);border:1px solid #FDE68A;';
+    bloc.innerHTML = `
+      <div class="fw-600" style="color:var(--warning);margin-bottom:0.3rem;">⚠️ Annulation à ${jours} jour(s) du séjour</div>
+      <div style="font-size:0.85rem;color:var(--texte);">Moins de ${JOURS_REMBOURSEMENT} jours : l'acompte de <strong>${euros(s.paye)}</strong> reste acquis.</div>`;
+  }
+
+  document.getElementById('ma-remboursement').value = remboursable ? s.paye : 0;
+  document.getElementById('ma-remboursement').max = s.paye;
+  document.getElementById('ma-motif').value = '';
+  closeModal('modal-paiements');
+  openModal('modal-annulation');
+}
+
+async function confirmerAnnulation() {
+  const r = resaActive;
+  const s = soldeResa(r);
+  let remboursement = parseFloat(document.getElementById('ma-remboursement').value) || 0;
+  if (remboursement > s.paye) {
+    showToast(`On ne peut pas rembourser plus que les ${euros(s.paye)} encaissés`, 'error');
+    return;
+  }
+  const motif = document.getElementById('ma-motif').value.trim() || null;
+  try {
+    await sb(`reservations?id=eq.${r.id}`, {
+      method: 'PATCH',
+      body: { statut: 'annule', annule_le: new Date().toISOString().split('T')[0], motif_annulation: motif }
+    });
+
+    // Le remboursement est un versement négatif : l'historique reste exact
+    if (remboursement > 0) {
+      const p = await sb('paiements', {
+        method: 'POST',
+        body: {
+          reservation_id: r.id,
+          client_id: r.client_id,
+          montant: -remboursement,
+          date_paiement: new Date().toISOString().split('T')[0],
+          moyen: 'virement',
+          note: 'Remboursement (annulation)'
+        }
+      });
+      if (p && p[0]) allPaiements.push(p[0]);
+    }
+
+    const idx = allReservations.findIndex(x => x.id === r.id);
+    if (idx > -1) {
+      allReservations[idx].statut = 'annule';
+      allReservations[idx].annule_le = new Date().toISOString().split('T')[0];
+      allReservations[idx].motif_annulation = motif;
+    }
+
+    closeModal('modal-annulation');
+    const conserve = s.paye - remboursement;
+    showToast(remboursement > 0
+      ? `Réservation annulée · ${euros(remboursement)} à rembourser`
+      : `Réservation annulée · ${euros(conserve)} conservé${conserve > 1 ? 's' : ''}`, 'success');
+    updateStats(); renderDashboard(); renderReservations();
+  } catch(e) { showToast('Erreur : ' + e.message, 'error'); }
+}
 
 function ouvrirPaiements(id) {
   resaActive = allReservations.find(r => r.id === id);
@@ -1876,6 +2019,25 @@ function rendrePaiements() {
   const r = resaActive;
   const s = soldeResa(r);
   const pcts = s.total > 0 ? Math.min(100, Math.round(s.paye / s.total * 100)) : 0;
+  const annulee = r.statut === 'annule';
+
+  // Une réservation déjà annulée ne se ré-annule pas
+  const btnAnnuler = document.getElementById('mp-annuler-btn');
+  if (btnAnnuler) btnAnnuler.style.display = annulee ? 'none' : 'block';
+
+  if (annulee) {
+    const conserve = s.paye;
+    document.getElementById('mp-solde').innerHTML = `
+      <div class="fw-600" style="color:var(--danger);margin-bottom:0.5rem;">✕ Réservation annulée${r.annule_le ? ' le ' + formatDate(r.annule_le) : ''}</div>
+      ${r.motif_annulation ? `<div style="font-size:0.83rem;color:var(--gris);margin-bottom:0.5rem;">Motif : ${r.motif_annulation}</div>` : ''}
+      <div style="display:flex;justify-content:space-between;">
+        <span style="font-size:0.85rem;color:var(--gris);">Montant conservé</span>
+        <span class="fw-600" style="color:${conserve > 0 ? 'var(--success)' : 'var(--gris)'};">${euros(conserve)}</span>
+      </div>
+      <div style="font-size:0.78rem;color:var(--gris);margin-top:0.4rem;">Le solde restant a été annulé : le client ne doit plus rien.</div>`;
+    rendreListePaiements();
+    return;
+  }
 
   document.getElementById('mp-solde').innerHTML = `
     <div style="display:flex;justify-content:space-between;margin-bottom:0.4rem;">
@@ -1896,22 +2058,30 @@ function rendrePaiements() {
       </span>
     </div>`;
 
+  rendreListePaiements();
+}
+
+function rendreListePaiements() {
+  const r = resaActive;
   const paiements = allPaiements.filter(p => p.reservation_id === r.id)
     .sort((a, b) => (a.date_paiement || '').localeCompare(b.date_paiement || ''));
   const divL = document.getElementById('mp-liste');
   if (!paiements.length) {
     divL.innerHTML = `<div style="font-size:0.85rem;color:var(--gris);padding:0.75rem;background:#FAFAF8;border-radius:8px;">Aucun versement enregistré pour l'instant.</div>`;
-  } else {
-    const moyens = { virement: 'Virement', especes: 'Espèces', cheque: 'Chèque', autre: 'Autre' };
-    divL.innerHTML = paiements.map(p => `
+    return;
+  }
+  const moyens = { virement: 'Virement', especes: 'Espèces', cheque: 'Chèque', autre: 'Autre' };
+  divL.innerHTML = paiements.map(p => {
+    const remb = Number(p.montant) < 0; // un remboursement est un versement négatif
+    return `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem 0;border-bottom:1px solid var(--gris-border);">
         <div>
-          <div class="fw-600" style="font-size:0.88rem;">${euros(p.montant)}</div>
+          <div class="fw-600" style="font-size:0.88rem;color:${remb ? 'var(--danger)' : 'var(--texte)'};">${remb ? '−' : ''}${euros(Math.abs(p.montant))}</div>
           <div class="text-muted" style="font-size:0.78rem;">${formatDate(p.date_paiement)} · ${moyens[p.moyen] || p.moyen || '—'}${p.note ? ' · ' + p.note : ''}</div>
         </div>
         <button class="btn btn-gray" style="font-size:0.7rem;padding:3px 8px;" onclick="supprimerPaiement('${p.id}')">✕</button>
-      </div>`).join('');
-  }
+      </div>`;
+  }).join('');
 }
 
 async function enregistrerPaiement() {
