@@ -86,7 +86,15 @@
   .dog-name { font-weight: 600; }
   .dog-meta { font-size: 0.8rem; color: var(--gris); }
 
-  .resa { background: white; border: 1px solid var(--gris-border); border-radius: 14px; padding: 1.1rem 1.25rem; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
+  .resa-carte { background: white; border: 1px solid var(--gris-border); border-radius: 14px; margin-bottom: 0.75rem; overflow: hidden; }
+  .resa { padding: 1.1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
+  .paiement-bloc { background: #FAFAF8; border-top: 1px solid var(--gris-border); padding: 0.9rem 1.25rem; }
+  .paiement-ligne { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--gris); margin-bottom: 0.35rem; }
+  .paiement-ligne .fw6 { font-weight: 600; color: var(--texte); }
+  .paiement-ligne.reste { font-weight: 700; color: var(--terre); font-size: 0.95rem; margin-top: 0.5rem; margin-bottom: 0; }
+  .paiement-bar { height: 7px; background: var(--gris-border); border-radius: 4px; overflow: hidden; margin: 0.5rem 0; }
+  .paiement-fill { height: 100%; background: var(--success); border-radius: 4px; transition: width 0.4s; }
+  .paiement-solde { font-size: 0.85rem; color: var(--success); font-weight: 600; margin-top: 0.4rem; }
   .resa-dates { font-weight: 600; }
   .resa-meta { font-size: 0.82rem; color: var(--gris); margin-top: 2px; }
   .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
@@ -312,6 +320,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let clientActuel = null; // fiche de la table clients
 let mesChiens = [];      // chiens du client (table chiens)
+let mesPaiements = [];   // versements du client (table paiements)
 
 // ═══════════════════════════════════════════════
 // AFFICHAGE DES VUES D'AUTHENTIFICATION
@@ -450,6 +459,10 @@ function formatDate(d) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
+function euros(n) {
+  const v = Math.round((Number(n) || 0) * 100) / 100;
+  return (Number.isInteger(v) ? v : v.toFixed(2)) + ' €';
+}
 function labelService(s) {
   return { pension: 'Pension', randonnee: 'Randonnée', visite: 'Visite', balade: 'Balade' }[s] || s || 'Séjour';
 }
@@ -486,12 +499,14 @@ async function entrerDashboard() {
   }
 
   // Charger chiens + séjours + fidélité en parallèle
-  const [{ data: chiens }, { data: resas }, { data: fids }] = await Promise.all([
+  const [{ data: chiens }, { data: resas }, { data: fids }, { data: paiements }] = await Promise.all([
     sb.from('chiens').select('*').eq('client_id', clientActuel.id).order('created_at', { ascending: true }),
     sb.from('reservations').select('*').eq('client_id', clientActuel.id).order('date_debut', { ascending: false }),
-    sb.from('fidelite').select('*').eq('client_id', clientActuel.id).order('chien_nom', { ascending: true })
+    sb.from('fidelite').select('*').eq('client_id', clientActuel.id).order('chien_nom', { ascending: true }),
+    sb.from('paiements').select('*').eq('client_id', clientActuel.id).order('date_paiement', { ascending: true })
   ]);
   mesChiens = chiens || [];
+  mesPaiements = paiements || [];
 
   rendreDashboard(clientActuel, resas || [], fids || []);
   showScreen('dashboard');
@@ -518,15 +533,37 @@ function rendreDashboard(client, resas, fids) {
       const badge = r.statut === 'confirme'
         ? (aVenir ? '<span class="badge a_venir">À venir</span>' : '<span class="badge passe">Terminé</span>')
         : `<span class="badge confirme">${r.statut || ''}</span>`;
-      return `<div class="resa">
-        <div>
-          <div class="resa-dates">${formatDate(r.date_debut)}${r.date_fin ? ' → ' + formatDate(r.date_fin) : ''}</div>
-          <div class="resa-meta">${labelService(r.service)}${noms ? ' · ' + noms : ''}</div>
+
+      // Solde : total − somme des versements déjà reçus
+      const total = Number(r.montant_total || 0);
+      const paye = mesPaiements
+        .filter(p => p.reservation_id === r.id)
+        .reduce((s, p) => s + Number(p.montant || 0), 0);
+      const reste = Math.round((total - paye) * 100) / 100;
+
+      let blocPaiement = '';
+      if (total > 0) {
+        const pct = Math.min(100, Math.round(paye / total * 100));
+        blocPaiement = `
+          <div class="paiement-bloc">
+            <div class="paiement-ligne"><span>Total du séjour</span><span class="fw6">${euros(total)}</span></div>
+            <div class="paiement-ligne"><span>Déjà réglé</span><span class="fw6" style="color:var(--success);">${euros(paye)}</span></div>
+            <div class="paiement-bar"><div class="paiement-fill" style="width:${pct}%;"></div></div>
+            ${reste > 0
+              ? `<div class="paiement-ligne reste"><span>Reste à régler</span><span>${euros(reste)}</span></div>`
+              : `<div class="paiement-solde">✓ Séjour entièrement réglé — merci !</div>`}
+          </div>`;
+      }
+
+      return `<div class="resa-carte">
+        <div class="resa">
+          <div>
+            <div class="resa-dates">${formatDate(r.date_debut)}${r.date_fin ? ' → ' + formatDate(r.date_fin) : ''}</div>
+            <div class="resa-meta">${labelService(r.service)}${noms ? ' · ' + noms : ''}</div>
+          </div>
+          <div style="text-align:right;">${badge}</div>
         </div>
-        <div style="text-align:right;">
-          ${badge}
-          ${r.montant_total ? `<div class="resa-amount">${r.montant_total} €</div>` : ''}
-        </div>
+        ${blocPaiement}
       </div>`;
     }).join('');
   }
