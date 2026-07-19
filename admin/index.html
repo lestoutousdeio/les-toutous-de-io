@@ -766,6 +766,31 @@
       <button class="btn btn-gray" onclick="closeModal('modal-client')">Fermer</button>
       <button class="btn btn-green" id="mc-valider-btn" onclick="">Valider le compte</button>
     </div>
+    <div style="border-top:1px solid var(--gris-border);margin-top:1.25rem;padding-top:1rem;">
+      <button class="btn btn-red" id="mc-supprimer-btn" style="width:100%;padding:0.6rem;">🗑 Supprimer ce client</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal suppression client : divulgation complète avant destruction -->
+<div class="modal-overlay" id="modal-suppr-client">
+  <div class="modal">
+    <h3 style="color:var(--danger);">🗑 Supprimer définitivement ce client ?</h3>
+    <div class="modal-sub" id="msc-nom"></div>
+
+    <div id="msc-impact" style="border-radius:10px;padding:1rem;margin-bottom:1.25rem;"></div>
+
+    <div id="msc-confirmation" style="display:none;">
+      <div class="form-group">
+        <label>Pour confirmer, tape le nom de famille du client</label>
+        <input type="text" id="msc-saisie" placeholder="Nom de famille" autocomplete="off">
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-gray" onclick="closeModal('modal-suppr-client')" style="flex:1;padding:0.7rem;">Annuler</button>
+      <button class="btn btn-red" id="msc-btn" onclick="confirmerSuppressionClient()" style="flex:1;padding:0.7rem;">Supprimer</button>
+    </div>
   </div>
 </div>
 
@@ -1560,6 +1585,8 @@ async function ouvrirClient(id) {
     <div class="info-row"><span class="ir-label">Statut</span><span class="ir-value"><span class="badge badge-${c.statut}">${labelStatutClient(c.statut)}</span></span></div>
     ${c.notes_internes ? `<div class="info-row"><span class="ir-label">Notes</span><span class="ir-value">${c.notes_internes}</span></div>` : ''}
   `;
+  document.getElementById('mc-supprimer-btn').onclick = () => ouvrirSuppressionClient(id);
+
   const btn = document.getElementById('mc-valider-btn');
   if (c.statut === 'valide') {
     btn.textContent = '✓ Compte validé';
@@ -1578,6 +1605,112 @@ async function ouvrirClient(id) {
     };
   }
   openModal('modal-client');
+}
+
+// ═══════════════════════════════════════════════════
+// SUPPRESSION D'UN CLIENT
+// ═══════════════════════════════════════════════════
+// Action irréversible : on montre exactement ce qui va disparaître avant
+// d'agir, et on exige une confirmation écrite dès qu'il y a un historique
+// financier (réservations ou paiements).
+let clientASupprimer = null;
+
+async function ouvrirSuppressionClient(id) {
+  const c = allClients.find(x => x.id === id);
+  if (!c) return;
+  clientASupprimer = c;
+  document.getElementById('msc-nom').textContent = `${c.prenom} ${c.nom} · ${c.email}`;
+  const div = document.getElementById('msc-impact');
+  div.style.cssText = 'border-radius:10px;padding:1rem;margin-bottom:1.25rem;background:var(--gris-light);';
+  div.innerHTML = '<div style="font-size:0.85rem;color:var(--gris);">Analyse des données rattachées…</div>';
+  document.getElementById('msc-confirmation').style.display = 'none';
+  document.getElementById('msc-saisie').value = '';
+  closeModal('modal-client');
+  openModal('modal-suppr-client');
+
+  // Compter les données réellement rattachées en base
+  let d = [], r = [], p = [], f = [], ch = [];
+  try {
+    [d, r, p, f, ch] = await Promise.all([
+      sb(`demandes?client_id=eq.${id}&select=id`),
+      sb(`reservations?client_id=eq.${id}&select=id,montant_total`),
+      sb(`paiements?client_id=eq.${id}&select=id,montant`),
+      sb(`fidelite?client_id=eq.${id}&select=id,chien_nom`),
+      sb(`chiens?client_id=eq.${id}&select=id,nom`)
+    ]);
+  } catch(e) { /* certaines tables peuvent être vides ou absentes */ }
+
+  const totalPaiements = (p || []).reduce((s, x) => s + Number(x.montant || 0), 0);
+  const aHistorique = (r || []).length > 0 || (p || []).length > 0;
+  clientASupprimer._impact = { d: d || [], r: r || [], p: p || [], f: f || [], ch: ch || [] };
+
+  const lignes = [
+    { n: (ch || []).length, label: 'fiche(s) chien' },
+    { n: (d || []).length,  label: 'demande(s)' },
+    { n: (r || []).length,  label: 'réservation(s)' },
+    { n: (p || []).length,  label: 'versement(s) enregistré(s)' },
+    { n: (f || []).length,  label: 'carte(s) de fidélité' }
+  ].filter(x => x.n > 0);
+
+  if (!lignes.length) {
+    div.style.cssText = 'border-radius:10px;padding:1rem;margin-bottom:1.25rem;background:var(--success-light);border:1px solid #BBF7D0;';
+    div.innerHTML = `<div style="font-size:0.87rem;">Aucune donnée rattachée à ce client. La suppression est sans conséquence.</div>`;
+  } else {
+    div.style.cssText = 'border-radius:10px;padding:1rem;margin-bottom:1.25rem;background:var(--danger-light);border:1px solid #FECACA;';
+    div.innerHTML = `
+      <div class="fw-600" style="color:var(--danger);margin-bottom:0.5rem;">Seront définitivement supprimés :</div>
+      <ul style="margin:0 0 0 1.1rem;font-size:0.87rem;line-height:1.7;">
+        ${lignes.map(x => `<li><strong>${x.n}</strong> ${x.label}</li>`).join('')}
+      </ul>
+      ${totalPaiements !== 0 ? `<div style="margin-top:0.6rem;font-size:0.85rem;color:var(--danger);font-weight:600;">
+        ⚠️ ${euros(totalPaiements)} d'historique comptable seront perdus.</div>` : ''}
+      <div style="margin-top:0.6rem;font-size:0.8rem;color:var(--gris);">Cette action est irréversible.</div>`;
+  }
+
+  // Confirmation écrite dès qu'il y a un historique financier
+  document.getElementById('msc-confirmation').style.display = aHistorique ? 'block' : 'none';
+}
+
+async function confirmerSuppressionClient() {
+  const c = clientASupprimer;
+  if (!c) return;
+  const imp = c._impact || { d: [], r: [], p: [], f: [], ch: [] };
+  const aHistorique = imp.r.length > 0 || imp.p.length > 0;
+
+  if (aHistorique) {
+    const saisi = document.getElementById('msc-saisie').value.trim().toLowerCase();
+    if (saisi !== (c.nom || '').trim().toLowerCase()) {
+      showToast('Le nom saisi ne correspond pas', 'error');
+      return;
+    }
+  }
+
+  const btn = document.getElementById('msc-btn');
+  btn.disabled = true; btn.textContent = 'Suppression…';
+  try {
+    // Ordre imposé par les dépendances : enfants d'abord, parent ensuite
+    await sb(`paiements?client_id=eq.${c.id}`,    { method: 'DELETE', prefer: 'return=minimal' });
+    await sb(`reservations?client_id=eq.${c.id}`, { method: 'DELETE', prefer: 'return=minimal' });
+    await sb(`demandes?client_id=eq.${c.id}`,     { method: 'DELETE', prefer: 'return=minimal' });
+    await sb(`fidelite?client_id=eq.${c.id}`,     { method: 'DELETE', prefer: 'return=minimal' });
+    await sb(`chiens?client_id=eq.${c.id}`,       { method: 'DELETE', prefer: 'return=minimal' });
+    await sb(`clients?id=eq.${c.id}`,             { method: 'DELETE', prefer: 'return=minimal' });
+
+    // Rafraîchir l'état local
+    allClients = allClients.filter(x => x.id !== c.id);
+    allReservations = allReservations.filter(x => x.client_id !== c.id);
+    allDemandes = allDemandes.filter(x => x.client_id !== c.id);
+    allPaiements = allPaiements.filter(x => x.client_id !== c.id);
+
+    closeModal('modal-suppr-client');
+    showToast(`${c.prenom} ${c.nom} a été supprimé`, 'success');
+    clientASupprimer = null;
+    updateStats(); renderDashboard(); renderClients(); renderReservations();
+  } catch(e) {
+    showToast('Suppression impossible : ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Supprimer';
+  }
 }
 
 // ═══════════════════════════════════════════════════
