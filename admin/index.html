@@ -766,8 +766,9 @@
       <button class="btn btn-gray" onclick="closeModal('modal-client')">Fermer</button>
       <button class="btn btn-green" id="mc-valider-btn" onclick="">Valider le compte</button>
     </div>
-    <div style="border-top:1px solid var(--gris-border);margin-top:1.25rem;padding-top:1rem;">
-      <button class="btn btn-red" id="mc-supprimer-btn" style="width:100%;padding:0.6rem;">🗑 Supprimer ce client</button>
+    <div style="border-top:1px solid var(--gris-border);margin-top:1.25rem;padding-top:1rem;display:flex;gap:0.6rem;">
+      <button class="btn btn-gray" id="mc-archiver-btn" style="flex:1;padding:0.6rem;">🗄 Archiver</button>
+      <button class="btn btn-red" id="mc-supprimer-btn" style="flex:1;padding:0.6rem;">🗑 Supprimer</button>
     </div>
   </div>
 </div>
@@ -916,7 +917,7 @@ function updateStats() {
   const nbToday = todayResas.reduce((sum, r) => sum + (r.nb_chiens || 1), 0);
   document.getElementById('stat-today').textContent = nbToday;
 
-  const validés = allClients.filter(c => c.statut === 'valide').length;
+  const validés = allClients.filter(c => c.statut === 'valide' && !c.archive_le).length;
   document.getElementById('stat-clients').textContent = validés;
 
   // Prochaine randonnée programmée (plus de jeudi deviné : ce sont vos dates)
@@ -1554,23 +1555,57 @@ function changeWeek(dir, reset = false) {
 // ═══════════════════════════════════════════════════
 // CLIENTS
 // ═══════════════════════════════════════════════════
+let voirArchives = false;
+
 function renderClients() {
   const div = document.getElementById('table-clients');
-  if (!allClients.length) {
-    div.innerHTML = `<div class="empty-state"><div class="es-icon">👤</div>Aucun client enregistré</div>`;
+  const actifs   = allClients.filter(c => !c.archive_le);
+  const archives = allClients.filter(c => c.archive_le);
+  const liste = voirArchives ? archives : actifs;
+
+  const bascule = `
+    <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+      <button class="btn ${voirArchives ? 'btn-gray' : 'btn-or'}" onclick="voirArchives=false; renderClients();">
+        Clients actifs (${actifs.length})
+      </button>
+      <button class="btn ${voirArchives ? 'btn-or' : 'btn-gray'}" onclick="voirArchives=true; renderClients();">
+        🗄 Archivés (${archives.length})
+      </button>
+    </div>`;
+
+  if (!liste.length) {
+    div.innerHTML = bascule + `<div class="empty-state"><div class="es-icon">${voirArchives ? '🗄' : '👤'}</div>${voirArchives ? 'Aucun client archivé' : 'Aucun client actif'}</div>`;
     return;
   }
-  div.innerHTML = `<table>
+
+  div.innerHTML = bascule + `<div class="card-wrap"><table>
     <thead><tr><th>Nom</th><th>Email</th><th>Téléphone</th><th>Ville</th><th>Statut</th><th>Actions</th></tr></thead>
-    <tbody>${allClients.map(c => `<tr>
-      <td class="fw-600">${c.prenom} ${c.nom}</td>
+    <tbody>${liste.map(c => `<tr${c.archive_le ? ' style="opacity:0.7;"' : ''}>
+      <td class="fw-600">${c.prenom} ${c.nom}${c.archive_le ? ' <span class="badge badge-termine">Archivé</span>' : ''}</td>
       <td class="text-muted">${c.email}</td>
       <td class="text-muted">${c.telephone || '—'}</td>
       <td class="text-muted">${c.ville || '—'}</td>
       <td><span class="badge badge-${c.statut}">${labelStatutClient(c.statut)}</span></td>
-      <td><button class="btn btn-blue" onclick="ouvrirClient('${c.id}')">Voir</button></td>
+      <td class="actions">
+        <button class="btn btn-blue" onclick="ouvrirClient('${c.id}')">Voir</button>
+        ${c.archive_le
+          ? `<button class="btn btn-green" onclick="basculerArchive('${c.id}', false)">Réactiver</button>`
+          : `<button class="btn btn-gray" onclick="basculerArchive('${c.id}', true)">Archiver</button>`}
+      </td>
     </tr>`).join('')}</tbody>
-  </table>`;
+  </table></div>`;
+}
+
+async function basculerArchive(id, archiver) {
+  const c = allClients.find(x => x.id === id);
+  if (!c) return;
+  try {
+    const valeur = archiver ? new Date().toISOString().split('T')[0] : null;
+    await sb(`clients?id=eq.${id}`, { method: 'PATCH', body: { archive_le: valeur } });
+    c.archive_le = valeur;
+    showToast(archiver ? `${c.prenom} ${c.nom} archivé` : `${c.prenom} ${c.nom} réactivé`, 'success');
+    renderClients();
+  } catch(e) { showToast('Erreur : ' + e.message, 'error'); }
 }
 
 async function ouvrirClient(id) {
@@ -1586,6 +1621,9 @@ async function ouvrirClient(id) {
     ${c.notes_internes ? `<div class="info-row"><span class="ir-label">Notes</span><span class="ir-value">${c.notes_internes}</span></div>` : ''}
   `;
   document.getElementById('mc-supprimer-btn').onclick = () => ouvrirSuppressionClient(id);
+  const btnArch = document.getElementById('mc-archiver-btn');
+  btnArch.textContent = c.archive_le ? '↩ Réactiver' : '🗄 Archiver';
+  btnArch.onclick = () => { basculerArchive(id, !c.archive_le); closeModal('modal-client'); };
 
   const btn = document.getElementById('mc-valider-btn');
   if (c.statut === 'valide') {
