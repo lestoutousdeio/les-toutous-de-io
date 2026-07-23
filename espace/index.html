@@ -257,9 +257,69 @@
     <div class="section">
       <div class="section-title">✨ Un nouveau séjour ?</div>
       <div class="empty" style="text-align:left;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
-        <span>Besoin de réserver de nouvelles dates pour votre compagnon ?</span>
-        <a class="btn-outline" id="new-request-btn" href="#">Faire une demande</a>
+        <span>Vos coordonnées et vos chiens sont déjà enregistrés — il ne reste que les dates.</span>
+        <button class="btn-outline" onclick="ouvrirNouvelleDemande()">Faire une demande</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODALE NOUVELLE DEMANDE ══════════ -->
+<div class="modal-overlay" id="modal-demande">
+  <div class="modal">
+    <h3>Faire une demande</h3>
+    <div class="modal-sub" id="nd-bonjour"></div>
+
+    <div class="field">
+      <label>Service souhaité</label>
+      <select id="nd-service" onchange="majFormDemande()">
+        <option value="pension">🏡 Pension familiale</option>
+        <option value="randonnee">🏔️ Randonnée montagne</option>
+        <option value="visite">🏠 Visite à domicile</option>
+        <option value="balade">🦮 Balade (1h)</option>
+      </select>
+    </div>
+
+    <!-- Randonnée : on ne propose que les sorties réellement programmées -->
+    <div class="field" id="nd-groupe-rando" style="display:none;">
+      <label>Sortie souhaitée</label>
+      <select id="nd-rando" onchange="majFormDemande()"></select>
+    </div>
+
+    <div class="row-2" id="nd-groupe-dates">
+      <div class="field">
+        <label id="nd-label-debut">Date d'arrivée</label>
+        <input type="date" id="nd-debut" onchange="majFormDemande()">
+      </div>
+      <div class="field" id="nd-groupe-fin">
+        <label>Date de départ</label>
+        <input type="date" id="nd-fin" onchange="majFormDemande()">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Quel(s) chien(s) ?</label>
+      <div id="nd-chiens"></div>
+    </div>
+
+    <!-- Randonnées programmées tombant pendant le séjour -->
+    <div class="field" id="nd-groupe-options" style="display:none;">
+      <label>Suggestions pour ce séjour</label>
+      <div id="nd-options"></div>
+    </div>
+
+    <div class="field">
+      <label>Un mot pour nous (facultatif)</label>
+      <textarea id="nd-message" placeholder="Précisions, questions…"></textarea>
+    </div>
+
+    <div id="nd-estimation" style="background:var(--gris-light);border-radius:10px;padding:1rem;margin-bottom:0.5rem;"></div>
+
+    <div class="auth-msg" id="nd-msg" style="margin-top:0.75rem;"></div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="fermerNouvelleDemande()">Annuler</button>
+      <button class="btn-main" id="nd-envoyer" onclick="envoyerNouvelleDemande()">Envoyer ma demande</button>
     </div>
   </div>
 </div>
@@ -497,7 +557,6 @@ async function entrerDashboard() {
     document.getElementById('dogs-list').innerHTML = '';
     document.getElementById('resa-list').innerHTML = `<div class="empty"><div class="e-icon">📋</div>Votre dossier client n'est pas encore finalisé.<br>Nous vous recontactons très vite !</div>`;
     document.getElementById('fid-list').innerHTML = '';
-    document.getElementById('new-request-btn').href = SITE_PUBLIC_URL;
     return;
   }
 
@@ -519,7 +578,6 @@ function rendreDashboard(client, resas, fids) {
   document.getElementById('who').textContent = client.email;
   document.getElementById('hello').textContent = `Bonjour ${client.prenom || ''} 🐾`;
   document.getElementById('hello-sub').textContent = 'Bienvenue dans votre espace personnel.';
-  document.getElementById('new-request-btn').href = SITE_PUBLIC_URL;
 
   // ── Chiens : fiches gérées par le client (table chiens) ──
   rendreChiens();
@@ -606,6 +664,268 @@ function rendreDashboard(client, resas, fids) {
     }).join('');
   }
 }
+
+// ═══════════════════════════════════════════════
+// NOUVELLE DEMANDE (pré-remplie)
+// ═══════════════════════════════════════════════
+// Le client est connecté : on connaît ses coordonnées et ses chiens.
+// Il ne saisit que le service, les dates et les chiens concernés.
+let randosDispo = [];
+
+async function ouvrirNouvelleDemande() {
+  if (!clientActuel) return;
+  document.getElementById('nd-bonjour').textContent =
+    `${clientActuel.prenom}, vos coordonnées sont déjà connues — indiquez simplement vos dates.`;
+  document.getElementById('nd-msg').className = 'auth-msg';
+  document.getElementById('nd-message').value = '';
+  document.getElementById('nd-debut').value = '';
+  document.getElementById('nd-fin').value = '';
+  const demain = new Date(); demain.setDate(demain.getDate() + 1);
+  document.getElementById('nd-debut').min = demain.toISOString().split('T')[0];
+  document.getElementById('nd-fin').min = demain.toISOString().split('T')[0];
+
+  // Charger les sorties programmées à venir
+  try {
+    const { data } = await sb.from('randonnees')
+      .select('date_sortie,heure,places_max')
+      .gte('date_sortie', new Date().toISOString().split('T')[0])
+      .order('date_sortie', { ascending: true });
+    randosDispo = data || [];
+  } catch(e) { randosDispo = []; }
+
+  rendreChoixChiens();
+  majFormDemande();
+  document.getElementById('modal-demande').classList.add('open');
+}
+
+function fermerNouvelleDemande() {
+  document.getElementById('modal-demande').classList.remove('open');
+}
+
+// Les chiens du client, à cocher — plus aucune ressaisie
+function rendreChoixChiens() {
+  const div = document.getElementById('nd-chiens');
+  if (!mesChiens.length) {
+    div.innerHTML = `<div style="font-size:0.83rem;color:var(--gris);background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:0.7rem 0.85rem;line-height:1.5;">
+      Aucune fiche chien enregistrée. Ajoutez d'abord votre compagnon dans « Mes chiens » ci-dessus.</div>`;
+    return;
+  }
+  div.innerHTML = mesChiens.map((c, i) => `
+    <label class="check-row">
+      <input type="checkbox" class="nd-chien-case" value="${c.id}" ${mesChiens.length === 1 || i === 0 ? 'checked' : ''} onchange="majFormDemande()">
+      🐕 ${esc(c.nom)}${c.race ? ` <span style="color:var(--gris);font-weight:400;">· ${esc(c.race)}</span>` : ''}
+    </label>`).join('');
+}
+
+function chiensCoches() {
+  return [...document.querySelectorAll('.nd-chien-case:checked')]
+    .map(cb => mesChiens.find(c => c.id === cb.value))
+    .filter(Boolean);
+}
+
+function majFormDemande() {
+  const service = document.getElementById('nd-service').value;
+  const estPension = service === 'pension';
+  const estRando = service === 'randonnee';
+
+  // Une pension a un séjour ; les autres services une seule date ;
+  // une randonnée se choisit parmi les sorties programmées.
+  document.getElementById('nd-groupe-rando').style.display = estRando ? 'block' : 'none';
+  document.getElementById('nd-groupe-dates').style.display = estRando ? 'none' : 'grid';
+  document.getElementById('nd-groupe-fin').style.display = estPension ? 'block' : 'none';
+  document.getElementById('nd-label-debut').textContent = estPension ? "Date d'arrivée" : 'Date souhaitée';
+
+  if (estRando) {
+    const sel = document.getElementById('nd-rando');
+    if (!sel.dataset.rempli) {
+      sel.innerHTML = randosDispo.length
+        ? randosDispo.map(r => `<option value="${r.date_sortie}">${formatDateRando(r.date_sortie)}${r.heure ? ' · ' + r.heure : ''}</option>`).join('')
+        : '<option value="">Aucune sortie programmée pour l\'instant</option>';
+      sel.dataset.rempli = '1';
+    }
+  }
+
+  rendreOptionsDemande();
+  majEstimation();
+}
+
+function formatDateRando(d) {
+  return new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+// Randonnées programmées tombant pendant le séjour demandé
+function rendreOptionsDemande() {
+  const service = document.getElementById('nd-service').value;
+  const debut = document.getElementById('nd-debut').value;
+  const fin = document.getElementById('nd-fin').value || debut;
+  const groupe = document.getElementById('nd-groupe-options');
+  // On vide réellement les options quand elles ne s'appliquent pas : sinon des
+  // cases restées cochées continueraient d'être facturées dans l'estimation.
+  if (service !== 'pension' || !debut) {
+    groupe.style.display = 'none';
+    document.getElementById('nd-options').innerHTML = '';
+    return;
+  }
+
+  const pendant = randosDispo.filter(r => r.date_sortie >= debut && r.date_sortie <= fin);
+  const nuits = nbNuits();
+  const items = [];
+  pendant.forEach(r => items.push({
+    id: 'rando_' + r.date_sortie,
+    label: `🏔️ Randonnée du ${formatDateRando(r.date_sortie)}`,
+    detail: `20 €/chien (tarif chien en pension)${r.heure ? ' · départ ' + r.heure : ''}`
+  }));
+  if (nuits > 5) items.push({ id: 'album', label: '📸 Album photo souvenir', detail: '30 € · séjour de plus de 5 nuits' });
+  items.push({ id: 'collier', label: '🦴 Collier personnalisé', detail: '15 € · gravé au prénom de votre chien' });
+
+  if (!items.length) {
+    groupe.style.display = 'none';
+    document.getElementById('nd-options').innerHTML = '';
+    return;
+  }
+  groupe.style.display = 'block';
+  const dejaCoches = [...document.querySelectorAll('.nd-option:checked')].map(c => c.value);
+  document.getElementById('nd-options').innerHTML = items.map(o => `
+    <label class="check-row">
+      <input type="checkbox" class="nd-option" value="${o.id}" ${dejaCoches.includes(o.id) ? 'checked' : ''} onchange="majEstimation()">
+      <span>${o.label} <span style="color:var(--gris);font-size:0.78rem;">— ${o.detail}</span></span>
+    </label>`).join('');
+}
+
+function nbNuits() {
+  const d = document.getElementById('nd-debut').value;
+  const f = document.getElementById('nd-fin').value;
+  if (!d || !f) return 0;
+  return Math.max(0, Math.round((new Date(f) - new Date(d)) / 86400000));
+}
+
+function majEstimation() {
+  const service = document.getElementById('nd-service').value;
+  const nbChiens = chiensCoches().length;
+  const div = document.getElementById('nd-estimation');
+  let base = 0, detail = '';
+
+  if (service === 'pension') {
+    const nuits = nbNuits();
+    const tarif = nbChiens > 1 ? 20 : 25;
+    base = nuits * tarif * nbChiens;
+    detail = nuits > 0 && nbChiens > 0
+      ? `${nuits} nuit${nuits > 1 ? 's' : ''} × ${tarif} € × ${nbChiens} chien${nbChiens > 1 ? 's' : ''}`
+      : '';
+  } else if (service === 'randonnee') {
+    const tarif = nbChiens > 1 ? 25 : 30;
+    base = tarif * nbChiens;
+    detail = nbChiens > 0 ? `${nbChiens} chien${nbChiens > 1 ? 's' : ''} × ${tarif} €` : '';
+  } else {
+    div.innerHTML = `<div style="font-size:0.85rem;color:var(--gris);line-height:1.5;">
+      Le tarif dépend de votre zone géographique — nous vous le confirmerons par retour.</div>`;
+    return;
+  }
+
+  let extras = 0;
+  document.querySelectorAll('.nd-option:checked').forEach(o => {
+    if (o.value.startsWith('rando_')) extras += 20 * nbChiens;
+    else if (o.value === 'album') extras += 30;
+    else if (o.value === 'collier') extras += 15;
+  });
+
+  if (!base && !extras) {
+    div.innerHTML = `<div style="font-size:0.85rem;color:var(--gris);">Choisissez vos dates et vos chiens pour voir l'estimation.</div>`;
+    return;
+  }
+  const total = base + extras;
+  const acompte = Math.round(total * 0.2);
+  div.innerHTML = `
+    ${detail ? `<div style="display:flex;justify-content:space-between;font-size:0.85rem;color:var(--gris);margin-bottom:0.3rem;">
+      <span>${detail}</span><span>${euros(base)}</span></div>` : ''}
+    ${extras > 0 ? `<div style="display:flex;justify-content:space-between;font-size:0.85rem;color:var(--gris);margin-bottom:0.3rem;">
+      <span>Options</span><span>${euros(extras)}</span></div>` : ''}
+    <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--gris-border);padding-top:0.5rem;margin-top:0.5rem;">
+      <span style="font-weight:700;">Estimation</span>
+      <span style="font-size:1.2rem;font-weight:700;color:var(--foret);">${euros(total)}</span>
+    </div>
+    <div style="font-size:0.76rem;color:var(--gris);margin-top:0.4rem;">Acompte de 20 % à la confirmation : ${euros(acompte)}</div>`;
+}
+
+async function envoyerNouvelleDemande() {
+  const msg = document.getElementById('nd-msg');
+  const service = document.getElementById('nd-service').value;
+  const chiens = chiensCoches();
+  const btn = document.getElementById('nd-envoyer');
+
+  if (!chiens.length) { msg.textContent = 'Sélectionnez au moins un chien.'; msg.className = 'auth-msg error'; return; }
+
+  let dateDebut, dateFin = null;
+  if (service === 'randonnee') {
+    dateDebut = document.getElementById('nd-rando').value;
+    if (!dateDebut) { msg.textContent = "Aucune sortie n'est programmée pour l'instant."; msg.className = 'auth-msg error'; return; }
+  } else {
+    dateDebut = document.getElementById('nd-debut').value;
+    if (!dateDebut) { msg.textContent = 'Choisissez une date.'; msg.className = 'auth-msg error'; return; }
+    if (service === 'pension') {
+      dateFin = document.getElementById('nd-fin').value;
+      if (!dateFin) { msg.textContent = 'Indiquez la date de départ.'; msg.className = 'auth-msg error'; return; }
+      if (dateFin <= dateDebut) { msg.textContent = 'Le départ doit être après l\'arrivée.'; msg.className = 'auth-msg error'; return; }
+    }
+  }
+
+  const options = [...document.querySelectorAll('.nd-option:checked')].map(o => o.value);
+  const randosChoisies = options.filter(o => o.startsWith('rando_')).map(o => o.slice(6));
+
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try {
+    // Les fiches chiens deviennent le chiens_json de la demande : rien à ressaisir
+    const chiensJson = chiens.map(c => ({
+      nom: c.nom, race: c.race || '', age: ageAffiche(c) || '',
+      poids: c.poids_kg ? c.poids_kg + ' kg' : '', sexe: c.sexe || '',
+      infos: [c.alimentation && 'Alimentation : ' + c.alimentation,
+              c.medicaments && 'Médicaments : ' + c.medicaments,
+              c.allergies && 'Allergies : ' + c.allergies,
+              c.habitudes && 'Habitudes : ' + c.habitudes].filter(Boolean).join(' · ')
+    }));
+
+    const notes = [];
+    if (randosChoisies.length) notes.push('Randonnées souhaitées : ' + randosChoisies.map(formatDateRando).join(', '));
+    if (options.includes('album')) notes.push('Album photo souvenir');
+    if (options.includes('collier')) notes.push('Collier personnalisé');
+    const messageClient = document.getElementById('nd-message').value.trim();
+
+    const { error } = await sb.from('demandes').insert({
+      // Rattachée d'emblée au compte : Iolana n'a plus à faire le lien
+      client_id: clientActuel.id,
+      prenom_contact: clientActuel.prenom,
+      nom_contact: clientActuel.nom,
+      email_contact: clientActuel.email,
+      telephone_contact: clientActuel.telephone || '',
+      service,
+      date_debut: dateDebut,
+      date_fin: dateFin,
+      nb_chiens: chiens.length,
+      chien_nom: chiens[0].nom,
+      chien_race: chiens[0].race || null,
+      chien_sexe: chiens[0].sexe || null,
+      chiens_json: chiensJson,
+      option_randonnee: randosChoisies.length > 0,
+      option_album: options.includes('album'),
+      option_collier: options.includes('collier'),
+      message: [messageClient, notes.join(' · ')].filter(Boolean).join('\n\n'),
+      statut: 'en_attente'
+    });
+    if (error) throw error;
+
+    fermerNouvelleDemande();
+    toast('🐾 Demande envoyée ! Nous revenons vers vous rapidement.', 'success');
+  } catch (e) {
+    msg.textContent = 'Erreur : ' + (e.message || 'réessayez.');
+    msg.className = 'auth-msg error';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Envoyer ma demande';
+  }
+}
+
+document.getElementById('modal-demande').addEventListener('click', e => {
+  if (e.target.id === 'modal-demande') fermerNouvelleDemande();
+});
 
 // ═══════════════════════════════════════════════
 // MES CHIENS (gérés par le client)
