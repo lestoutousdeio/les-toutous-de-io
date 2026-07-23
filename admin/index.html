@@ -844,6 +844,7 @@ let allReservations = [];
 let allDispos = [];
 let allRandos = [];
 let allPaiements = [];
+let allFidelite = [];   // cartes de fidélité (pour déduire les jours offerts à l'acceptation)
 let filtreCourant = 'tous';
 let filtreResa = 'tous';
 let weekOffset = 0;
@@ -894,6 +895,7 @@ async function loadAll() {
     ]);
     await chargerRandonnees();
     await chargerPaiements();
+    await chargerFidelite();
     updateStats();
     renderDashboard();
   } catch(e) {
@@ -1150,7 +1152,12 @@ function ouvrirModalAcceptation(d) {
             </select>
           </div>
         </div>
-      </div>`;
+      </div>
+      ${offertsDispoDemande(d) > 0 ? `
+      <label class="check-row" style="display:flex;align-items:center;gap:0.5rem;background:var(--success-light);border:1px solid #BBF7D0;border-radius:10px;padding:0.75rem 0.9rem;margin:1rem 0;cursor:pointer;font-size:0.85rem;">
+        <input type="checkbox" id="accept-utiliser-offerts" checked onchange="recalcAccept('${d.id}')" style="width:16px;height:16px;accent-color:var(--foret);">
+        🎁 Utiliser ${offertsDispoDemande(d)} jour(s) offert(s) disponible(s) — déduit automatiquement du total
+      </label>` : ''}`;
 
   } else if (service === 'randonnee') {
     entete += `
@@ -1199,6 +1206,7 @@ function recalcAccept(id) {
   let montantTotal = 0;
   let joursFidelite = 0;   // seule la pension alimente la carte de fidélité
   let arrivee = 'normal', depart = 'normal';
+  let planFidelite = [];   // par chien : { chien, gagnes, offerts }
   let detail = '';
 
   if (service === 'pension') {
@@ -1211,7 +1219,21 @@ function recalcAccept(id) {
     const joursPlein  = Math.max(0, nbNuits - (arrivee === 'tard' ? 1 : 0) - (depart === 'tot' ? 1 : 0));
     const joursReduit = (arrivee === 'tard' ? 1 : 0) + (depart === 'tot' ? 1 : 0);
     joursFidelite = joursPlein;
-    montantTotal  = (joursPlein * rate * nb) + (joursReduit * 15 * nb);
+    const base = (joursPlein * rate * nb) + (joursReduit * 15 * nb);
+
+    // ── Jours offerts fidélité : déduits automatiquement (case cochée par défaut) ──
+    const utiliserOfferts = document.getElementById('accept-utiliser-offerts')?.checked ?? true;
+    const noms = (getChiens(d) || []).map(c => c.nom).filter(Boolean);
+    if (!noms.length && d.chien_nom) noms.push(d.chien_nom);
+    let joursOffertsAppliques = 0;
+    planFidelite = noms.map(nom => {
+      const dispo = utiliserOfferts ? offertsDispoChien(d.client_id, nom) : 0;
+      const offerts = Math.min(dispo, joursPlein); // pas plus de jours offerts que de jours pleins
+      joursOffertsAppliques += offerts;
+      return { chien: nom, gagnes: joursPlein, offerts };
+    });
+    const reductionOfferts = joursOffertsAppliques * rate;
+    montantTotal = Math.max(0, base - reductionOfferts);
 
     detail = `
       <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
@@ -1221,6 +1243,10 @@ function recalcAccept(id) {
       ${joursReduit > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
         <span style="font-size:0.85rem;color:var(--gris);">Jours tarif réduit (15 €)</span>
         <span style="font-weight:600;">${joursReduit} × 15 € × ${nb} = ${joursReduit * 15 * nb} €</span>
+      </div>` : ''}
+      ${joursOffertsAppliques > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;color:var(--success);">
+        <span style="font-size:0.85rem;">🎁 Jours offerts fidélité</span>
+        <span style="font-weight:600;">− ${joursOffertsAppliques} × ${rate} € = −${reductionOfferts} €</span>
       </div>` : ''}`;
 
   } else if (service === 'randonnee') {
@@ -1255,19 +1281,20 @@ function recalcAccept(id) {
       <span style="font-size:0.9rem;font-weight:600;color:var(--terre);">${montantAcompte} €</span>
     </div>
     ${service === 'pension' ? `<div style="display:flex;justify-content:space-between;margin-top:0.25rem;">
-      <span style="font-size:0.78rem;color:var(--gris);">Jours fidélité comptabilisés</span>
+      <span style="font-size:0.78rem;color:var(--gris);">Jours fidélité comptabilisés (par chien)</span>
       <span style="font-size:0.82rem;font-weight:600;color:var(--foret);">${joursFidelite} j</span>
     </div>` : ''}
   `;
 
   // Stocker pour confirmation
-  window._acceptData = { id, montantTotal, montantAcompte, arrivee, depart, joursFidelite, nb };
+  window._acceptData = { id, montantTotal, montantAcompte, arrivee, depart, joursFidelite, nb, planFidelite };
 }
 
 async function confirmerAcceptation() {
-  const { id, montantTotal, montantAcompte, arrivee, depart, joursFidelite } = window._acceptData;
+  const { id, montantTotal, montantAcompte, arrivee, depart, joursFidelite, planFidelite } = window._acceptData;
   const d = allDemandes.find(x => x.id === id);
   const note = document.getElementById('md-note')?.value || '';
+  const plan = planFidelite || [];
   try {
     await sb(`demandes?id=eq.${id}`, {
       method: 'PATCH',
@@ -1280,7 +1307,9 @@ async function confirmerAcceptation() {
         montant_acompte: montantAcompte,
         arrivee_tardive: arrivee === 'tard',
         depart_tot: depart === 'tot',
-        jours_fidelite: joursFidelite
+        jours_fidelite: joursFidelite,
+        // Détail par chien de ce que la réservation fera à la fidélité
+        fidelite_json: plan
       }
     });
     const idx = allDemandes.findIndex(x => x.id === id);
@@ -1291,6 +1320,7 @@ async function confirmerAcceptation() {
       allDemandes[idx].arrivee_tardive = arrivee === 'tard';
       allDemandes[idx].depart_tot = depart === 'tot';
       allDemandes[idx].jours_fidelite = joursFidelite;
+      allDemandes[idx].fidelite_json = plan;
     }
     closeModal('modal-acceptation');
     closeModal('modal-demande');
@@ -1362,6 +1392,7 @@ async function confirmerVirement(id) {
       arrivee_tardive: d.arrivee_tardive || false,
       depart_tot: d.depart_tot || false,
       jours_fidelite: joursFidelite,
+      fidelite_json: d.fidelite_json || null,
       option_randonnee: d.option_randonnee,
       option_album: d.option_album,
       option_collier: d.option_collier,
@@ -1388,12 +1419,16 @@ async function confirmerVirement(id) {
       } catch(e) { console.warn('Acompte non enregistré comme paiement :', e.message); }
     }
 
-    // Mise à jour fidélité — une carte par chien
-    if (joursFidelite > 0) {
+    // Mise à jour fidélité selon le plan calculé à l'acceptation :
+    // chaque chien gagne ses jours et voit ses jours offerts consommés.
+    let plan = normaliserFidelite(d.fidelite_json);
+    if (!plan.length && joursFidelite > 0) {
+      // Repli pour les demandes acceptées avant cette évolution
       const noms = (getChiens(d) || [{ nom: d.chien_nom }]).map(c => c.nom).filter(Boolean);
-      for (const nom of noms) {
-        await mettreAJourFidelite(clientId, nom, joursFidelite);
-      }
+      plan = noms.map(nom => ({ chien: nom, gagnes: joursFidelite, offerts: 0 }));
+    }
+    for (const p of plan) {
+      await mettreAJourFidelite(clientId, p.chien, p.gagnes || 0, p.offerts || 0);
     }
 
     allDemandes = await sb('demandes?order=created_at.desc');
@@ -1405,27 +1440,50 @@ async function confirmerVirement(id) {
   } catch(e) { showToast('Erreur : ' + e.message, 'error'); console.error(e); }
 }
 
-async function mettreAJourFidelite(clientId, chienNom, joursAjouter) {
+// fidelite_json peut arriver en objet ou en chaîne JSON selon la source
+function normaliserFidelite(v) {
+  if (!v) return [];
+  if (typeof v === 'string') { try { v = JSON.parse(v); } catch(e) { return []; } }
+  return Array.isArray(v) ? v : [];
+}
+
+// Crédite un chien : ajoute les jours gagnés et consomme les jours offerts.
+async function mettreAJourFidelite(clientId, chienNom, joursGagnes, offertsUtilises = 0) {
   try {
-    // Chercher la carte de fidélité existante
     const cartes = await sb(`fidelite?client_id=eq.${clientId}&chien_nom=eq.${encodeURIComponent(chienNom)}`);
     if (cartes && cartes.length > 0) {
       const carte = cartes[0];
-      const newTotal = (carte.jours_cumules || 0) + joursAjouter;
-      const joursOfferts = Math.floor(newTotal / 12);
+      const newCumul = (carte.jours_cumules || 0) + joursGagnes;
+      const newUtilises = (carte.jours_offerts_utilises || 0) + offertsUtilises;
       await sb(`fidelite?id=eq.${carte.id}`, {
         method: 'PATCH',
-        body: { jours_cumules: newTotal, jours_offerts_total: joursOfferts, updated_at: new Date().toISOString() }
+        body: { jours_cumules: newCumul, jours_offerts_total: Math.floor(newCumul / 12),
+                jours_offerts_utilises: newUtilises, updated_at: new Date().toISOString() }
       });
     } else {
-      // Créer la carte
-      const joursOfferts = Math.floor(joursAjouter / 12);
       await sb('fidelite', {
         method: 'POST',
-        body: { client_id: clientId, chien_nom: chienNom, jours_cumules: joursAjouter, jours_offerts_total: joursOfferts }
+        body: { client_id: clientId, chien_nom: chienNom, jours_cumules: joursGagnes,
+                jours_offerts_total: Math.floor(joursGagnes / 12), jours_offerts_utilises: offertsUtilises }
       });
     }
   } catch(e) { console.warn('Fidélité non mise à jour:', e); }
+}
+
+// Rembobine un chien à l'annulation : retire les jours gagnés et rend les jours offerts consommés.
+async function annulerFidelite(clientId, chienNom, joursGagnes, offertsUtilises = 0) {
+  try {
+    const cartes = await sb(`fidelite?client_id=eq.${clientId}&chien_nom=eq.${encodeURIComponent(chienNom)}`);
+    if (!cartes || !cartes.length) return;
+    const carte = cartes[0];
+    const newCumul = Math.max(0, (carte.jours_cumules || 0) - joursGagnes);
+    const newUtilises = Math.max(0, (carte.jours_offerts_utilises || 0) - offertsUtilises);
+    await sb(`fidelite?id=eq.${carte.id}`, {
+      method: 'PATCH',
+      body: { jours_cumules: newCumul, jours_offerts_total: Math.floor(newCumul / 12),
+              jours_offerts_utilises: newUtilises, updated_at: new Date().toISOString() }
+    });
+  } catch(e) { console.warn('Fidélité non rembobinée:', e); }
 }
 
 // ═══════════════════════════════════════════════════
@@ -1974,6 +2032,30 @@ async function chargerPaiements() {
   }
 }
 
+async function chargerFidelite() {
+  try {
+    allFidelite = await sb('fidelite?select=*') || [];
+  } catch(e) {
+    allFidelite = [];
+    console.warn('Fidélité indisponible :', e.message);
+  }
+}
+
+// Jours offerts disponibles pour un chien d'un client donné
+function offertsDispoChien(clientId, chienNom) {
+  const carte = allFidelite.find(f =>
+    f.client_id === clientId && (f.chien_nom || '').toLowerCase() === (chienNom || '').toLowerCase());
+  return carte ? Math.max(0, (carte.jours_offerts_total || 0) - (carte.jours_offerts_utilises || 0)) : 0;
+}
+
+// Total des jours offerts disponibles sur les chiens d'une demande
+function offertsDispoDemande(d) {
+  if (!d.client_id) return 0;
+  const noms = (getChiens(d) || []).map(c => c.nom).filter(Boolean);
+  if (!noms.length && d.chien_nom) noms.push(d.chien_nom);
+  return noms.reduce((s, nom) => s + offertsDispoChien(d.client_id, nom), 0);
+}
+
 // Total versé pour une réservation
 function totalPaye(resaId) {
   return allPaiements
@@ -2151,6 +2233,14 @@ async function confirmerAnnulation() {
       });
       if (p && p[0]) allPaiements.push(p[0]);
     }
+
+    // Rembobiner la fidélité : retirer les jours crédités à tort et rendre
+    // les jours offerts qui avaient été consommés par ce séjour.
+    const planFid = normaliserFidelite(r.fidelite_json);
+    for (const p of planFid) {
+      await annulerFidelite(r.client_id, p.chien, p.gagnes || 0, p.offerts || 0);
+    }
+    await chargerFidelite();
 
     const idx = allReservations.findIndex(x => x.id === r.id);
     if (idx > -1) {
@@ -2389,10 +2479,14 @@ async function loadFidelite() {
       div.innerHTML = `<div class="empty-state"><div class="es-icon">🎁</div>Aucune carte de fidélité encore créée.<br><span style="font-size:0.8rem;margin-top:0.5rem;display:block;">Elles sont créées automatiquement à la confirmation des réservations.</span></div>`;
       return;
     }
-    div.innerHTML = `<table>
+    div.innerHTML = `
+      <div style="background:var(--info-light);border:1px solid #BFDBFE;border-radius:8px;padding:0.7rem 0.9rem;margin-bottom:1rem;font-size:0.82rem;color:#1D4ED8;line-height:1.5;">
+        Les jours offerts sont déduits <strong>automatiquement</strong> du montant lors de l'acceptation d'une pension.
+      </div>
+      <table>
       <thead><tr>
         <th>Chien</th><th>Propriétaire</th><th>Jours cumulés</th>
-        <th>Cycle actuel</th><th>Prochain jour offert</th><th>Jours offerts dispo</th><th>Actions</th>
+        <th>Cycle actuel</th><th>Prochain jour offert</th><th>Jours offerts dispo</th>
       </tr></thead>
       <tbody>${cartes.map(c => {
         const cycleActuel = c.jours_cumules % 12;
@@ -2418,30 +2512,12 @@ async function loadFidelite() {
               ? `<span style="background:var(--success-light);color:var(--success);font-weight:700;padding:4px 10px;border-radius:20px;font-size:0.82rem;">🎁 ${dispo} jour${dispo > 1 ? 's' : ''} offert${dispo > 1 ? 's' : ''}</span>`
               : `<span style="color:var(--gris);font-size:0.82rem;">—</span>`}
           </td>
-          <td>
-            ${dispo > 0 ? `<button class="btn btn-or" onclick="utiliserJourOffert('${c.id}', '${c.chien_nom}')">Utiliser 1 jour</button>` : ''}
-          </td>
         </tr>`;
       }).join('')}</tbody>
     </table>`;
   } catch(e) {
     div.innerHTML = `<div class="empty-state">Erreur de chargement · La table fidélité n'existe peut-être pas encore — exécute le SQL de mise à jour.</div>`;
   }
-}
-
-async function utiliserJourOffert(carteId, chienNom) {
-  if (!confirm(`Utiliser 1 jour offert pour ${chienNom} ?`)) return;
-  try {
-    const cartes = await sb(`fidelite?id=eq.${carteId}`);
-    if (!cartes?.length) return;
-    const carte = cartes[0];
-    await sb(`fidelite?id=eq.${carteId}`, {
-      method: 'PATCH',
-      body: { jours_offerts_utilises: (carte.jours_offerts_utilises || 0) + 1, updated_at: new Date().toISOString() }
-    });
-    showToast(`🎁 1 jour offert utilisé pour ${chienNom}`, 'success');
-    loadFidelite();
-  } catch(e) { showToast('Erreur', 'error'); }
 }
 
 // ═══════════════════════════════════════════════════
