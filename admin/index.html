@@ -1135,6 +1135,17 @@ function ouvrirModalAcceptation(d) {
       <div class="info-row"><span class="ir-label">Durée</span><span class="ir-value">${nbNuits} nuit(s) · ${nb} chien(s)</span></div>`;
     bloc = `
       <div style="background:var(--gris-light);border-radius:10px;padding:1rem;margin:1rem 0;">
+        <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--gris);margin-bottom:0.5rem;">Tarif par jour</div>
+        <div class="form-row-2" style="align-items:center;">
+          <div class="form-group" style="margin-bottom:0;">
+            <input type="number" id="accept-rate" value="${nb > 1 ? 20 : 25}" min="0" step="1" onchange="recalcAccept('${d.id}')">
+          </div>
+          <div style="font-size:0.78rem;color:var(--gris);line-height:1.4;">
+            ${nb > 1 ? '20 €/chien (2+ chiens du même foyer)' : '25 €/jour · passez à 20 € pour un client de très longue date'}
+          </div>
+        </div>
+      </div>
+      <div style="background:var(--gris-light);border-radius:10px;padding:1rem;margin:1rem 0;">
         <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--gris);margin-bottom:0.75rem;">Horaires (impact sur le tarif)</div>
         <div class="form-row-2">
           <div class="form-group">
@@ -1210,7 +1221,9 @@ function recalcAccept(id) {
   let detail = '';
 
   if (service === 'pension') {
-    const rate = nb > 1 ? 20 : 25;
+    // Tarif par jour : auto (25 € pour 1 chien, 20 €/chien dès 2), ajustable
+    // par Iolana (ex. 20 € pour un client de très longue date à 1 chien).
+    const rate = parseFloat(document.getElementById('accept-rate')?.value) || (nb > 1 ? 20 : 25);
     const nbNuits = d.date_fin && d.date_debut
       ? Math.ceil((new Date(d.date_fin) - new Date(d.date_debut)) / 86400000) : 1;
     arrivee = document.getElementById('accept-arrivee')?.value || 'normal';
